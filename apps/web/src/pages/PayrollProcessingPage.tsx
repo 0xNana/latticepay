@@ -11,7 +11,7 @@ export function PayrollProcessingPage() {
   const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
   const hasStarted = state.status !== "idle" || Boolean(state.txHash);
   return (
-    <Section title="Payroll Run in Progress" subtitle={`Execution state for run ${run.runId}.`}>
+    <Section title="Processing" subtitle={`Run ${run.runId}.`}>
       <div className="progress-wrap">
         <div className="progress-bar" style={{ width: `${pct}%` }} />
       </div>
@@ -32,17 +32,17 @@ export function PayrollProcessingPage() {
               {state.blockNumber ? ` | Block: ${state.blockNumber}` : ""}
             </>
           ) : (
-            "No payroll run has been submitted yet."
+            "No run submitted."
           )}
         </span>
-        {!hasStarted ? <Link className="button ghost" to="/payroll/draft">Back To Draft</Link> : null}
+        {!hasStarted ? <Link className="button ghost" to="/payroll/draft">Back to draft</Link> : null}
         <Link
           className="button"
           to="/payroll/completed"
           aria-disabled={state.status !== "confirmed"}
           style={state.status !== "confirmed" ? { pointerEvents: "none", opacity: 0.5 } : undefined}
         >
-          View Completed Run
+          View complete
         </Link>
       </div>
       {state.error ? <p style={{ color: "#f87171" }}>Error: {state.error}</p> : null}

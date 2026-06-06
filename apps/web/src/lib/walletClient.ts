@@ -1,40 +1,49 @@
-import { Porto } from "porto";
-import { WalletClient, WalletActions, walletActions } from "porto/viem";
-import { createPublicClient, http, type Address } from "viem";
+import { createPublicClient, createWalletClient, custom, http, type Address } from "viem";
 import { sepolia } from "viem/chains";
 import { appConfig } from "./config";
-const PORTO_SESSION_KEY = "cpay_porto_account";
 
-const porto = Porto.create({
-  chains: [sepolia],
-  merchantUrl: appConfig.merchantUrl,
-  announceProvider: false
-});
-export const portoProvider = porto.provider;
+type WalletRequest = {
+  method: string;
+  params?: unknown[] | Record<string, unknown>;
+};
 
-if (appConfig.portoDebug) {
-  const originalRequest = porto.provider.request.bind(porto.provider);
-  porto.provider.request = (async (request: unknown) => {
-    const method = typeof request === "object" && request !== null && "method" in request ? (request as { method: string }).method : "unknown";
-    console.debug("[porto:rpc] ->", method, request);
-    const start = Date.now();
-    try {
-      const result = await originalRequest(request as any);
-      console.debug("[porto:rpc] <-", method, { durationMs: Date.now() - start, result });
-      return result;
-    } catch (error) {
-      console.error("[porto:rpc] !!", method, {
-        durationMs: Date.now() - start,
-        error
-      });
-      throw error;
-    }
-  }) as typeof porto.provider.request;
+type BrowserWalletProvider = {
+  request: (request: WalletRequest) => Promise<unknown>;
+  providers?: BrowserWalletProvider[];
+  isMetaMask?: boolean;
+};
+
+declare global {
+  interface Window {
+    ethereum?: BrowserWalletProvider;
+  }
 }
 
-const baseWalletClient = WalletClient.fromPorto(porto, { chain: sepolia });
+const WALLET_SESSION_KEY = "cpay_wallet_account";
+const SEPOLIA_CHAIN_ID_HEX = `0x${sepolia.id.toString(16)}`;
 
-export const walletClient = baseWalletClient.extend(walletActions);
+function getBrowserWallet(): BrowserWalletProvider {
+  if (typeof window === "undefined" || !window.ethereum) {
+    throw new Error("No browser wallet found. Install MetaMask or another EIP-1193 wallet.");
+  }
+
+  if (Array.isArray(window.ethereum.providers) && window.ethereum.providers.length > 0) {
+    return window.ethereum.providers.find((provider) => provider.isMetaMask) || window.ethereum.providers[0];
+  }
+
+  return window.ethereum;
+}
+
+const walletRpc = {
+  request: (request: WalletRequest) => getBrowserWallet().request(request)
+};
+
+export const walletProvider = walletRpc;
+
+export const walletClient = createWalletClient({
+  chain: sepolia,
+  transport: custom(walletRpc)
+});
 
 export const publicClient = createPublicClient({
   chain: sepolia,
@@ -120,32 +129,76 @@ const wrapperAbi = [
   }
 ] as const;
 
-export async function connectPortoAccount(options?: { createAccount?: boolean }) {
-  const response = await WalletActions.connect(walletClient, {
-    chainIds: [appConfig.chainId],
-    createAccount: options?.createAccount ?? true
-  });
-  return response.accounts[0]?.address;
+function asWalletAddress(value: unknown): Address | null {
+  if (typeof value !== "string" || !/^0x[a-fA-F0-9]{40}$/.test(value)) return null;
+  return value as Address;
 }
 
-export async function loginUser() {
-  return connectPortoAccount({ createAccount: false });
+function firstWalletAddress(value: unknown): Address | null {
+  if (!Array.isArray(value)) return null;
+  return asWalletAddress(value[0]);
 }
 
-export function getSavedPortoAccount(): Address | null {
+function providerErrorCode(error: unknown) {
+  const code = (error as { code?: unknown })?.code;
+  return typeof code === "number" || typeof code === "string" ? String(code) : "";
+}
+
+export async function ensureSepoliaNetwork() {
+  const currentChainId = await walletProvider.request({ method: "eth_chainId" }).catch(() => null);
+  if (typeof currentChainId === "string" && currentChainId.toLowerCase() === SEPOLIA_CHAIN_ID_HEX) return;
+
   try {
-    const value = window.localStorage.getItem(PORTO_SESSION_KEY);
-    if (!value || !value.startsWith("0x") || value.length !== 42) return null;
-    return value as Address;
+    await walletProvider.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: SEPOLIA_CHAIN_ID_HEX }]
+    });
+  } catch (error) {
+    if (providerErrorCode(error) !== "4902") throw error;
+    await walletProvider.request({
+      method: "wallet_addEthereumChain",
+      params: [
+        {
+          chainId: SEPOLIA_CHAIN_ID_HEX,
+          chainName: "Sepolia",
+          nativeCurrency: { name: "Sepolia ETH", symbol: "ETH", decimals: 18 },
+          rpcUrls: [appConfig.rpcUrl],
+          blockExplorerUrls: ["https://sepolia.etherscan.io"]
+        }
+      ]
+    });
+  }
+}
+
+export async function connectWallet() {
+  const accounts = await walletProvider.request({ method: "eth_requestAccounts" });
+  const address = firstWalletAddress(accounts);
+  if (!address) throw new Error("No wallet account returned.");
+  await ensureSepoliaNetwork();
+  saveWalletAccount(address);
+  return address;
+}
+
+export const loginUser = connectWallet;
+
+export async function getActiveWalletAccount(): Promise<Address | null> {
+  const accounts = await walletProvider.request({ method: "eth_accounts" }).catch(() => []);
+  return firstWalletAddress(accounts);
+}
+
+export function getSavedWalletAccount(): Address | null {
+  try {
+    const value = window.localStorage.getItem(WALLET_SESSION_KEY);
+    return asWalletAddress(value);
   } catch {
     return null;
   }
 }
 
-export function savePortoAccount(address: Address | null) {
+export function saveWalletAccount(address: Address | null) {
   try {
-    if (address) window.localStorage.setItem(PORTO_SESSION_KEY, address);
-    else window.localStorage.removeItem(PORTO_SESSION_KEY);
+    if (address) window.localStorage.setItem(WALLET_SESSION_KEY, address);
+    else window.localStorage.removeItem(WALLET_SESSION_KEY);
   } catch {}
 }
 
@@ -173,16 +226,17 @@ async function claimViaBackend(address: Address, amount: string) {
   return payload.txHash as `0x${string}`;
 }
 
-async function claimViaPortoDirect(address: Address, amount: bigint) {
+async function claimViaWalletDirect(address: Address, amount: bigint) {
   if (!appConfig.payrollUnderlying) throw new Error("Missing VITE_PAYROLL_UNDERLYING_ADDRESS.");
   if (!appConfig.payrollToken) throw new Error("Missing VITE_PAYROLL_TOKEN_ADDRESS.");
+  await ensureSepoliaNetwork();
 
   const mintTx = await walletClient.writeContract({
     address: appConfig.payrollUnderlying,
     abi: faucetErc20Abi,
     functionName: "mint",
     args: [address, amount],
-    chain: walletClient.chain,
+    chain: sepolia,
     account: address
   });
   await waitForTxConfirmation(mintTx);
@@ -192,21 +246,19 @@ async function claimViaPortoDirect(address: Address, amount: bigint) {
     abi: faucetErc20Abi,
     functionName: "approve",
     args: [appConfig.payrollToken, amount],
-    chain: walletClient.chain,
+    chain: sepolia,
     account: address
   });
   await waitForTxConfirmation(approveTx);
 
-  const wrapTx = await walletClient.writeContract({
+  return walletClient.writeContract({
     address: appConfig.payrollToken,
     abi: wrapperAbi,
     functionName: "wrap",
     args: [address, amount],
-    chain: walletClient.chain,
+    chain: sepolia,
     account: address
   });
-
-  return wrapTx;
 }
 
 const sleep = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -216,47 +268,35 @@ export async function claimPayrollTokens(address: Address, amount = "1000000") {
   if (appConfig.faucetMode === "backend") {
     return claimViaBackend(address, amount);
   }
-  if (appConfig.faucetMode === "porto_direct") {
-    return claimViaPortoDirect(address, amountRaw);
+  if (appConfig.faucetMode === "wallet_direct") {
+    return claimViaWalletDirect(address, amountRaw);
   }
-  // hybrid: try porto direct first, fallback to backend signer.
+
   try {
-    return await claimViaPortoDirect(address, amountRaw);
+    return await claimViaWalletDirect(address, amountRaw);
   } catch (directError) {
     const message = String((directError as Error)?.message || directError);
     const invalidNonce = /invalid nonce|invalid transaction nonce/i.test(message);
     if (invalidNonce) {
-      // Porto AA sometimes returns stale nonce right after previous UserOps.
       await sleep(1200);
       try {
-        return await claimViaPortoDirect(address, amountRaw);
+        return await claimViaWalletDirect(address, amountRaw);
       } catch (retryError) {
-        if (appConfig.portoDebug) {
-          console.debug("[faucet] porto_direct retry failed, fallback backend", {
+        if (appConfig.walletDebug) {
+          console.debug("[faucet] wallet direct retry failed, fallback backend", {
             error: String((retryError as Error)?.message || retryError)
           });
         }
         return claimViaBackend(address, amount);
       }
     }
-    if (appConfig.portoDebug) {
-      console.debug("[faucet] porto_direct failed, fallback backend", {
+    if (appConfig.walletDebug) {
+      console.debug("[faucet] wallet direct failed, fallback backend", {
         error: message
       });
     }
     return claimViaBackend(address, amount);
   }
-}
-
-export async function signUpWithPasskeyAndFund() {
-  const address = await connectPortoAccount({ createAccount: true });
-  if (!address) throw new Error("No account returned from Porto.");
-
-  return {
-    address,
-    funded: false,
-    note: "Smart account created. Use Faucet to claim payroll tokens."
-  };
 }
 
 export async function waitForTxConfirmation(txHash: `0x${string}`) {
@@ -268,12 +308,13 @@ export async function waitForTxConfirmation(txHash: `0x${string}`) {
 
 export async function setTokenObserver(account: Address, observer: Address) {
   if (!appConfig.payrollToken) throw new Error("Missing VITE_PAYROLL_TOKEN_ADDRESS.");
+  await ensureSepoliaNetwork();
   return walletClient.writeContract({
     address: appConfig.payrollToken,
     abi: observerAbi,
     functionName: "setObserver",
     args: [account, observer],
-    chain: walletClient.chain,
+    chain: sepolia,
     account
   });
 }
@@ -300,12 +341,13 @@ export async function isExecutorOperator(account: Address, executor: Address): P
 
 export async function setExecutorOperator(account: Address, executor: Address, until: number) {
   if (!appConfig.payrollToken) throw new Error("Missing VITE_PAYROLL_TOKEN_ADDRESS.");
+  await ensureSepoliaNetwork();
   return walletClient.writeContract({
     address: appConfig.payrollToken,
     abi: operatorAbi,
     functionName: "setOperator",
     args: [executor, until],
-    chain: walletClient.chain,
+    chain: sepolia,
     account
   });
 }

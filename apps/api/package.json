@@ -9,7 +9,6 @@
   },
   "dependencies": {
     "@zama-fhe/relayer-sdk": "^0.4.1",
-    "porto": "^0.2.37",
     "viem": "^2.46.2"
   }
 }

@@ -15,8 +15,8 @@ export function HistoricalRunsPage() {
           : "Draft";
 
   return (
-    <Section title="Runs" subtitle="Audit and track every onchain payroll run.">
-      <Table headers={["Run ID", "Date", "Payments", "Status", "Action"]}>
+    <Section title="Audit Trail" subtitle="Track private DAO payroll runs, statuses, and receipts.">
+      <Table headers={["Run ID", "Date", "Contributors", "Status", "Action"]}>
         <tr key={`active-${active.runId}`}>
           <td>{active.runId || "-"}</td>
           <td>{new Date(active.createdAt).toISOString().slice(0, 10)}</td>

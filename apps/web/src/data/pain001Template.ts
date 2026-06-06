@@ -24,15 +24,15 @@ export type Pain001SampleFile = {
 
 export const pain001SampleFiles: Pain001SampleFile[] = [
   {
-    label: "Seismic Labs LLC (5)",
+    label: "Seismic DAO (5)",
     fileName: "pain001-seismic-labs-llc-05-employees-usd-2026-03.xml"
   },
   {
-    label: "FHEVM GMBH (10)",
+    label: "FHEVM DAO (10)",
     fileName: "pain001-fhevm-gmbh-10-employees-usd-2026-03.xml"
   },
   {
-    label: "FHEVM GMBH (15)",
+    label: "FHEVM DAO (15)",
     fileName: "pain001-fhevm-gmbh-15-employees-usd-2026-03.xml"
   }
 ];
@@ -61,26 +61,26 @@ const demoRecipients = [
 ] as const;
 
 const demoPayments: Pain001Payment[] = [
-  { id: "EMP-001", role: "CEO", name: "Ada Keller", recipient: demoRecipients[0], amount: "$15000" },
-  { id: "EMP-002", role: "CTO", name: "Noah Braun", recipient: demoRecipients[1], amount: "$13500" },
-  { id: "EMP-003", role: "COO", name: "Mila Vogt", recipient: demoRecipients[2], amount: "$11000" },
-  { id: "EMP-004", role: "Head of Engineering", name: "Liam Kurz", recipient: demoRecipients[3], amount: "$10000" },
-  { id: "EMP-005", role: "Senior Backend Engineer", name: "Emma Hahn", recipient: demoRecipients[4], amount: "$9000" },
-  { id: "EMP-006", role: "Senior Frontend Engineer", name: "Paul Weiss", recipient: demoRecipients[5], amount: "$8800" },
-  { id: "EMP-007", role: "Product Manager", name: "Sofia Lang", recipient: demoRecipients[6], amount: "$8400" },
-  { id: "EMP-008", role: "DevOps Engineer", name: "Jonas Kruger", recipient: demoRecipients[7], amount: "$8200" },
-  { id: "EMP-009", role: "QA Lead", name: "Lena Koch", recipient: demoRecipients[8], amount: "$7600" },
-  { id: "EMP-010", role: "Finance Operations", name: "Max Otto", recipient: demoRecipients[9], amount: "$7400" },
-  { id: "EMP-011", role: "Security Engineer", name: "Iris Beck", recipient: demoRecipients[10], amount: "$7200" },
-  { id: "EMP-012", role: "Data Engineer", name: "Elias Stern", recipient: demoRecipients[11], amount: "$7000" },
-  { id: "EMP-013", role: "Mobile Engineer", name: "Mara Feld", recipient: demoRecipients[12], amount: "$6800" },
-  { id: "EMP-014", role: "Designer", name: "Nina Graf", recipient: demoRecipients[13], amount: "$6600" },
-  { id: "EMP-015", role: "People Ops", name: "Tom Reich", recipient: demoRecipients[14], amount: "$6400" },
-  { id: "EMP-016", role: "Support Lead", name: "Lea Blum", recipient: demoRecipients[15], amount: "$6200" },
-  { id: "EMP-017", role: "Technical Writer", name: "Jan Wolf", recipient: demoRecipients[16], amount: "$6000" },
-  { id: "EMP-018", role: "Cloud Engineer", name: "Mia Frank", recipient: demoRecipients[17], amount: "$5800" },
-  { id: "EMP-019", role: "Research Engineer", name: "Kai Peters", recipient: demoRecipients[18], amount: "$5600" },
-  { id: "EMP-020", role: "Operations Analyst", name: "Eva Schmid", recipient: demoRecipients[19], amount: "$5400" }
+  { id: "CNT-001", role: "CEO", name: "Ada Keller", recipient: demoRecipients[0], amount: "$15000" },
+  { id: "CNT-002", role: "CTO", name: "Noah Braun", recipient: demoRecipients[1], amount: "$13500" },
+  { id: "CNT-003", role: "COO", name: "Mila Vogt", recipient: demoRecipients[2], amount: "$11000" },
+  { id: "CNT-004", role: "Head of Engineering", name: "Liam Kurz", recipient: demoRecipients[3], amount: "$10000" },
+  { id: "CNT-005", role: "Senior Backend Engineer", name: "Emma Hahn", recipient: demoRecipients[4], amount: "$9000" },
+  { id: "CNT-006", role: "Senior Frontend Engineer", name: "Paul Weiss", recipient: demoRecipients[5], amount: "$8800" },
+  { id: "CNT-007", role: "Product Manager", name: "Sofia Lang", recipient: demoRecipients[6], amount: "$8400" },
+  { id: "CNT-008", role: "DevOps Engineer", name: "Jonas Kruger", recipient: demoRecipients[7], amount: "$8200" },
+  { id: "CNT-009", role: "QA Lead", name: "Lena Koch", recipient: demoRecipients[8], amount: "$7600" },
+  { id: "CNT-010", role: "Finance Operations", name: "Max Otto", recipient: demoRecipients[9], amount: "$7400" },
+  { id: "CNT-011", role: "Security Engineer", name: "Iris Beck", recipient: demoRecipients[10], amount: "$7200" },
+  { id: "CNT-012", role: "Data Engineer", name: "Elias Stern", recipient: demoRecipients[11], amount: "$7000" },
+  { id: "CNT-013", role: "Mobile Engineer", name: "Mara Feld", recipient: demoRecipients[12], amount: "$6800" },
+  { id: "CNT-014", role: "Designer", name: "Nina Graf", recipient: demoRecipients[13], amount: "$6600" },
+  { id: "CNT-015", role: "Contributor Ops", name: "Tom Reich", recipient: demoRecipients[14], amount: "$6400" },
+  { id: "CNT-016", role: "Support Lead", name: "Lea Blum", recipient: demoRecipients[15], amount: "$6200" },
+  { id: "CNT-017", role: "Technical Writer", name: "Jan Wolf", recipient: demoRecipients[16], amount: "$6000" },
+  { id: "CNT-018", role: "Cloud Engineer", name: "Mia Frank", recipient: demoRecipients[17], amount: "$5800" },
+  { id: "CNT-019", role: "Research Engineer", name: "Kai Peters", recipient: demoRecipients[18], amount: "$5600" },
+  { id: "CNT-020", role: "Operations Analyst", name: "Eva Schmid", recipient: demoRecipients[19], amount: "$5400" }
 ];
 
 export function buildPain001Xml(input: Pain001BuildInput) {
@@ -144,22 +144,22 @@ ${input.payments
 }
 
 export const demoPain001Xml = buildPain001Xml({
-  companyName: "FHEVM GMB",
+  companyName: "FHEVM DAO",
   runId: "FHEVM-APR-2026-001",
   executionDate: "2026-03-31",
   payments: demoPayments
 });
 
 const knownAddressPayments: Pain001Payment[] = [
-  { id: "EMP-KNOWN-001", role: "Engineering", name: "Known Wallet 1", recipient: "0x08f8EaeC894Fdb6F2e6D8526dB2bf543DAcc9a41", amount: "$5555" },
-  { id: "EMP-KNOWN-002", role: "Engineering", name: "Known Wallet 2", recipient: "0x134B68ff311DC9e0c7108F3aE690B913dC03dD5B", amount: "$5555" },
-  { id: "EMP-KNOWN-003", role: "Engineering", name: "Known Wallet 3", recipient: "0xcDB2796aB24E3980Ef25344Ce331b932c03baBe3", amount: "$5555" },
-  { id: "EMP-KNOWN-004", role: "Engineering", name: "Known Wallet 4", recipient: "0x141A175B5F443a0D7057B13E50f1DaEC15223180", amount: "$5555" },
-  { id: "EMP-KNOWN-005", role: "Engineering", name: "Known Wallet 5", recipient: "0x63e1Ed4075AfDB5c9B59b4Fa2A242bBF99543C5B", amount: "$5555" }
+  { id: "CNT-KNOWN-001", role: "Engineering", name: "Known Wallet 1", recipient: "0x08f8EaeC894Fdb6F2e6D8526dB2bf543DAcc9a41", amount: "$5555" },
+  { id: "CNT-KNOWN-002", role: "Engineering", name: "Known Wallet 2", recipient: "0x134B68ff311DC9e0c7108F3aE690B913dC03dD5B", amount: "$5555" },
+  { id: "CNT-KNOWN-003", role: "Engineering", name: "Known Wallet 3", recipient: "0xcDB2796aB24E3980Ef25344Ce331b932c03baBe3", amount: "$5555" },
+  { id: "CNT-KNOWN-004", role: "Engineering", name: "Known Wallet 4", recipient: "0x141A175B5F443a0D7057B13E50f1DaEC15223180", amount: "$5555" },
+  { id: "CNT-KNOWN-005", role: "Engineering", name: "Known Wallet 5", recipient: "0x63e1Ed4075AfDB5c9B59b4Fa2A242bBF99543C5B", amount: "$5555" }
 ];
 
 export const knownAddressesPain001Xml = buildPain001Xml({
-  companyName: "FHEVM GMB",
+  companyName: "FHEVM DAO",
   runId: "FHEVM-KNOWN-ADDR-2026-001",
   executionDate: "2026-03-31",
   payments: knownAddressPayments
@@ -170,7 +170,7 @@ export function downloadDemoPain001Template() {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = "fhevm-gmb-payroll-demo.pain.001.xml";
+  anchor.download = "fhevm-dao-private-payroll.pain.001.xml";
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
@@ -182,7 +182,7 @@ export function downloadKnownAddressesPain001Template() {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = "fhevm-known-addresses-5555-sample.pain.001.xml";
+  anchor.download = "fhevm-dao-known-addresses-5555-sample.pain.001.xml";
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();

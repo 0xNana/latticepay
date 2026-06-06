@@ -6,7 +6,7 @@ cPay is a confidential payroll dApp that lets companies run payroll onchain with
 It uses:
 - Zama FHEVM primitives for encrypted inputs/decryption flows
 - OpenZeppelin ERC-7984 confidential token standard
-- Porto smart accounts for UX and sponsored execution
+- Standard browser wallet connection for signing and submission
 - ISO 20022 `pain.001` input and `pain.002` reporting model
 
 ## What Works Today

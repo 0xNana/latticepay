@@ -1,6 +1,6 @@
-import type { ChangeEvent } from "react";
+import { useMemo, useState, type ChangeEvent } from "react";
 import { Link } from "react-router-dom";
-import { Section, Stat } from "../Cards";
+import { Section } from "../Cards";
 import { downloadPain001SampleFile, pain001SampleFiles } from "../../data/pain001Template";
 import type { PayrollRunDraft } from "../../lib/payrollRunStore";
 
@@ -11,18 +11,99 @@ type DashboardHeroSectionProps = {
 
 export function DashboardHeroSection({ hasRun, run }: DashboardHeroSectionProps) {
   return (
-    <Section
-      title="cPay — Confidential Payroll"
-      subtitle="Confidential Payroll on Ethereum. Upload ISO 20022 payroll files, encrypt salaries locally, and execute batch payroll without revealing compensation on-chain."
-    >
-      {hasRun ? (
-        <div className="grid-3">
-          <Stat label="Employees" value={String(run.stats.employees)} />
-          <Stat label="Payroll Total" value={run.stats.totalDisplay} />
-          <Stat label="Network" value={run.network} />
+    <section className="landing-hero" aria-labelledby="hero-title">
+      <div className="hero-content">
+        <span className="hero-pill">cPay for DAOs</span>
+        <h1 id="hero-title">Private payroll for onchain teams</h1>
+        <p>Upload payroll. Encrypt amounts. Settle from treasury.</p>
+        <div className="hero-actions">
+          <Link className="button hero-button" to="/payroll/draft">Start payroll</Link>
+          <Link className="button ghost hero-button" to="/runs">View audit</Link>
         </div>
-      ) : null}
-    </Section>
+        <div className="hero-metrics" aria-label="Payroll summary">
+          <div>
+            <span>Contributors</span>
+            <strong>{hasRun ? run.stats.employees : 0}</strong>
+          </div>
+          <div>
+            <span>Total</span>
+            <strong>{hasRun ? run.stats.totalDisplay : "-"}</strong>
+          </div>
+          <div>
+            <span>Privacy</span>
+            <strong>FHE</strong>
+          </div>
+        </div>
+      </div>
+      <div className="hero-visual" aria-label="Encrypted payroll preview">
+        <img className="hero-preview-image" src="/hero-payroll-preview.png" alt="Encrypted payroll dashboard preview" />
+      </div>
+    </section>
+  );
+}
+
+
+export function PayrollSimulatorSection() {
+  const [contributors, setContributors] = useState(24);
+  const [averagePayout, setAveragePayout] = useState(2800);
+  const total = useMemo(() => contributors * averagePayout, [contributors, averagePayout]);
+  const formattedTotal = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0
+  }).format(total);
+
+  return (
+    <section className="payroll-sim" aria-labelledby="sim-title">
+      <div className="sim-copy">
+        <span className="hero-pill">Live preview</span>
+        <h2 id="sim-title">Model a private run</h2>
+      </div>
+      <div className="sim-panel">
+        <div className="sim-controls">
+          <label>
+            <span>Contributors</span>
+            <strong>{contributors}</strong>
+            <input
+              type="range"
+              min="4"
+              max="120"
+              value={contributors}
+              onChange={(event) => setContributors(Number(event.target.value))}
+            />
+          </label>
+          <label>
+            <span>Avg payout</span>
+            <strong>{new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(averagePayout)}</strong>
+            <input
+              type="range"
+              min="500"
+              max="12000"
+              step="100"
+              value={averagePayout}
+              onChange={(event) => setAveragePayout(Number(event.target.value))}
+            />
+          </label>
+        </div>
+        <div className="sim-output">
+          <div>
+            <span>Operator total</span>
+            <strong>{formattedTotal}</strong>
+          </div>
+          <div>
+            <span>Public amount</span>
+            <strong>****** cUSDC</strong>
+          </div>
+          <div className="settlement-rail" aria-hidden="true">
+            <span>Treasury</span>
+            <i />
+            <span>Encrypted</span>
+            <i />
+            <span>Paid</span>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -34,13 +115,18 @@ type RunPayrollSectionProps = {
 
 export function RunPayrollSection({ busy, uploadError, onUpload }: RunPayrollSectionProps) {
   return (
-    <Section title="Run Payroll" subtitle="Upload and run your payroll batch.">
-      <div className="cta-row">
+    <Section title="Import">
+      <div className="upload-console compact-upload">
         <div className="stack-sm">
-          <span>Upload your `pain.001` XML or use one of the prepared sample files.</span>
-          <span className="badge">ISO 20022 Payroll Standard</span>
+          <h3>Payroll XML</h3>
+          <div className="badge-row">
+            <span className="badge">pain.001</span>
+            <span className="badge badge-muted">Local parse</span>
+            <span className="badge badge-muted">Encrypted settlement</span>
+          </div>
         </div>
-        <div className="cta-actions">
+        <div className="sample-panel">
+          <span className="detail-label">Samples</span>
           {pain001SampleFiles.map((sample) => (
             <button
               key={sample.fileName}
@@ -50,8 +136,10 @@ export function RunPayrollSection({ busy, uploadError, onUpload }: RunPayrollSec
               {sample.label}
             </button>
           ))}
+        </div>
+        <div className="cta-actions cta-actions-stacked">
           <label className="button ghost" style={{ cursor: busy ? "wait" : "pointer" }}>
-            {busy ? "Parsing..." : "Upload pain.001"}
+            {busy ? "Parsing..." : "Upload XML"}
             <input
               type="file"
               accept=".xml,text/xml,application/xml"
@@ -60,10 +148,10 @@ export function RunPayrollSection({ busy, uploadError, onUpload }: RunPayrollSec
               style={{ display: "none" }}
             />
           </label>
-          <Link className="button" to="/payroll/draft">Open Draft</Link>
+          <Link className="button" to="/payroll/draft">Open draft</Link>
         </div>
       </div>
-      {uploadError ? <p style={{ color: "#f87171", marginTop: "0.75rem" }}>{uploadError}</p> : null}
+      {uploadError ? <p className="error-text">{uploadError}</p> : null}
     </Section>
   );
 }
@@ -73,99 +161,62 @@ type BatchPreviewSectionProps = {
   run: PayrollRunDraft;
 };
 
-export function BatchPreviewSection({ hasRun, run }: BatchPreviewSectionProps) {
-  if (!hasRun) return null;
+export function BatchPreviewSection(_props: BatchPreviewSectionProps) {
+  const workflows = [
+    {
+      eyebrow: "DAO",
+      title: "Payroll intake",
+      detail: "Import pain.001, review recipients, lock totals."
+    },
+    {
+      eyebrow: "Private",
+      title: "Encrypted amounts",
+      detail: "Seal salary values before they touch the chain."
+    },
+    {
+      eyebrow: "Treasury",
+      title: "Settlement record",
+      detail: "Batch payout with audit trail and pain.002 receipt."
+    }
+  ];
 
   return (
-    <Section title="Payroll Batch Preview" subtitle="Parsed from the uploaded ISO 20022 file before encryption and submission.">
-      <div className="grid-4">
-        <Stat label="Source File" value="pain.001" />
-        <Stat label="Employees" value={String(run.stats.employees)} />
-        <Stat label="Total Payroll" value={run.stats.totalDisplay} />
-        <Stat label="Status" value="Ready to Encrypt" />
-      </div>
-      <div className="cta-row">
-        <span>Review the parsed batch, then continue to confidential execution.</span>
-        <div className="cta-actions">
-          <Link className="button ghost" to="/payroll/draft">Review Draft</Link>
-          <Link className="button" to="/payroll/confirm">Run Payroll</Link>
-        </div>
-      </div>
-    </Section>
-  );
-}
-
-export function WhyCPaySection() {
-  return (
-    <Section
-      title="Why Confidential Payroll Matters"
-      subtitle="Public blockchains are transparent by default. cPay keeps payroll verifiable on-chain while keeping salary amounts private."
-    >
-      <div className="comparison-grid">
-        <div className="comparison-card">
-          <h3>Public Payroll Leaks Compensation Data</h3>
-          <ul className="list compact-list">
-            <li>Salary data is exposed permanently on public block explorers</li>
-            <li>Compensation, bonus timing, and payroll patterns become visible to anyone</li>
-          </ul>
-        </div>
-        <div className="comparison-card comparison-card-positive">
-          <h3>cPay Keeps Payroll Verifiable and Private</h3>
-          <ul className="list compact-list">
-            <li>Salaries stay encrypted during execution</li>
-            <li>Employers get on-chain settlement without publishing compensation</li>
-            <li>Employees decrypt only their own payment</li>
-          </ul>
-        </div>
-      </div>
-    </Section>
-  );
-}
-
-type PaymentEmailAlertsSectionProps = {
-  alertEmail: string;
-  alertSaved: string | null;
-  showAlertPreview: boolean;
-  onAlertEmailChange: (value: string) => void;
-  onSaveAlertEmail: () => void;
-};
-
-export function PaymentEmailAlertsSection({
-  alertEmail,
-  alertSaved,
-  showAlertPreview,
-  onAlertEmailChange,
-  onSaveAlertEmail
-}: PaymentEmailAlertsSectionProps) {
-  return (
-    <Section title="Payment Email Alerts">
-      <div className="card">
-        <p style={{ marginTop: 0 }}>
-          Used only for payment notifications. We do not use this address for campaigns or newsletters.
-        </p>
-        <div className="email-alert-row">
-          <input
-            className="faucet-input email-alert-input"
-            type="email"
-            placeholder="you@company.com"
-            value={alertEmail}
-            onChange={(event) => onAlertEmailChange(event.target.value)}
-          />
-          <button className="button" onClick={onSaveAlertEmail}>Enable Alerts</button>
-        </div>
-        {alertSaved ? <p style={{ marginBottom: 0 }}>{alertSaved}</p> : null}
-        {showAlertPreview ? (
-          <div className="card" style={{ marginTop: 12 }}>
-            <p style={{ marginTop: 0, marginBottom: 10, fontWeight: 700 }}>Email Preview</p>
-            <p style={{ margin: "4px 0" }}><strong>To:</strong> {alertEmail}</p>
-            <p style={{ margin: "4px 0" }}><strong>Subject:</strong> Your onchain pay slip is available</p>
-            <p style={{ margin: "4px 0" }}><strong>From:</strong> elegant.eth</p>
-            <p style={{ margin: "4px 0" }}><strong>Timestamp:</strong> Mar-01-2026 03:03:59 PM UTC</p>
-            <p style={{ margin: "4px 0" }}><strong>Value:</strong> ****** cUSDC</p>
+    <section className="pro-flow-section" aria-labelledby="product-flow-title">
+      <div className="pro-flow-hero">
+        <div className="pro-flow-visual" aria-label="Private payroll flow preview">
+          <div className="pro-window-head">
+            <div className="pro-product-mark pro-product-mark-dark">
+              <span aria-hidden="true">cP</span>
+              <strong id="product-flow-title">cPay Flow</strong>
+            </div>
           </div>
-        ) : null}
+          <div className="pro-workflow-head">
+            <h3>Every payroll strategy, one private flow.</h3>
+          </div>
+          <div className="pro-window-rail" aria-hidden="true">
+            <span />
+            <i />
+            <span />
+            <i />
+            <span />
+          </div>
+          <div className="pro-window-list">
+            <div><span>Import</span><strong>pain.001 XML</strong></div>
+            <div><span>Encrypt</span><strong>****** cUSDC</strong></div>
+            <div><span>Settle</span><strong>pain.002 receipt</strong></div>
+          </div>
+          <div className="pro-workflow-grid">
+            {workflows.map((workflow) => (
+              <article className="pro-workflow-card" key={workflow.title}>
+                <span>{workflow.eyebrow}</span>
+                <h4>{workflow.title}</h4>
+                <p>{workflow.detail}</p>
+              </article>
+            ))}
+          </div>
+        </div>
       </div>
-    </Section>
+    </section>
   );
 }
 
@@ -181,15 +232,37 @@ export function PayrollNetworkFooterSection({
   const statusClassName = systemStatusTone === "good" ? "status-text status-text-good" : "status-text status-text-warn";
 
   return (
-    <div className="status-footer" aria-label="Payroll system status">
-      <div className="status-footer-item">
-        <span className="detail-label">Encryption Engine</span>
-        <span className="status-text status-text-good">FHE Active</span>
+    <footer className="site-footer">
+      <div className="footer-brand-row">
+        <div>
+          <strong>cPay</strong>
+          <span>Private payroll for DAOs.</span>
+        </div>
       </div>
-      <div className="status-footer-item status-footer-item-right">
-        <span className="detail-label">System Status</span>
-        <span className={statusClassName}>{systemStatus}</span>
+      <div className="footer-grid">
+        <div className="footer-col">
+          <span>Product</span>
+          <Link to="/payroll/draft">Payroll</Link>
+          <Link to="/runs">Audit</Link>
+          <Link to="/payout">Portal</Link>
+        </div>
+        <div className="footer-col">
+          <span>Files</span>
+          <button type="button" onClick={() => downloadPain001SampleFile(pain001SampleFiles[0].fileName)}>pain.001 sample</button>
+          <Link to="/payroll/completed">pain.002 receipt</Link>
+          <span className="footer-muted">ISO 20022</span>
+        </div>
+        <div className="footer-col">
+          <span>Security</span>
+          <span className="footer-muted">FHE active</span>
+          <span className="footer-muted">Multisig policy</span>
+          <span className={statusClassName}>{systemStatus}</span>
+        </div>
       </div>
-    </div>
+      <div className="footer-bottom">
+        <span>cPay Labs</span>
+        <span>(c) 2026</span>
+      </div>
+    </footer>
   );
 }

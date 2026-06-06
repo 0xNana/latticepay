@@ -1,7 +1,7 @@
 import { recoverTypedDataAddress, type Address, type Hex } from "viem";
 import { toHex } from "viem";
 import { appConfig } from "./config";
-import { portoProvider, publicClient, walletClient } from "./portoClient";
+import { publicClient, walletClient, walletProvider } from "./walletClient";
 
 const confidentialTokenAbi = [
   {
@@ -65,7 +65,7 @@ declare global {
 let relayerScriptPromise: Promise<void> | null = null;
 let relayerInstancePromise: Promise<RelayerInstance> | null = null;
 let relayerCdnHealthy: boolean | null = null;
-const relayerDebug = appConfig.portoDebug;
+const relayerDebug = appConfig.walletDebug;
 
 export async function checkRelayerCdnHealth(): Promise<boolean> {
   if (relayerCdnHealthy !== null) return relayerCdnHealthy;
@@ -161,8 +161,7 @@ async function signUserDecryptTypedData(address: Address, eip712: {
     message: eip712.message
   };
   try {
-    // Prefer Porto raw RPC path per provider docs.
-    signature = (await portoProvider.request({
+    signature = (await walletProvider.request({
       method: "eth_signTypedData_v4",
       params: [address, JSON.stringify(v4Payload)]
     })) as Hex;
@@ -178,8 +177,8 @@ async function signUserDecryptTypedData(address: Address, eip712: {
 
   try {
     if (relayerDebug) {
-      const accounts = (await portoProvider.request({ method: "eth_accounts" })) as Address[];
-      console.debug("[relayer] porto accounts", { accounts, signingAs: address });
+      const accounts = (await walletProvider.request({ method: "eth_accounts" })) as Address[];
+      console.debug("[relayer] wallet accounts", { accounts, signingAs: address });
     }
     const recovered = await recoverTypedDataAddress({
       account: address,
@@ -191,7 +190,7 @@ async function signUserDecryptTypedData(address: Address, eip712: {
     } as any);
     if (recovered.toLowerCase() !== address.toLowerCase()) {
       const mismatchError = new Error(
-        `Signer mismatch for decrypt auth. signedBy=${recovered} expected=${address}. If this is a smart account, relayer user-decrypt may require an EOA signature.`
+        `Signer mismatch for decrypt auth. signedBy=${recovered} expected=${address}. The relayer user-decrypt flow requires the connected wallet to sign for this address.`
       );
       if (relayerDebug) {
         console.debug("[relayer] typed data signer mismatch", {

@@ -13,7 +13,6 @@ primary_region = 'iad'
   MAX_FAUCET_CLAIM = '1000000000000'
   MAX_PAYMENT_COUNT = '15'
   PORT = '8787'
-  PORTO_DEBUG = 'false'
 
 [http_service]
   internal_port = 8787

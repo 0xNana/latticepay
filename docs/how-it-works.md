@@ -1,8 +1,8 @@
 # How It Works
 
 ## 1. Onboard
-- User signs up or logs in with Porto smart account.
-- Account is reused across draft/confirmation/execution flow (no repeated reconnect expected).
+- User connects a standard browser wallet.
+- Wallet session is reused across draft/confirmation/execution flow.
 
 ## 2. Fund
 - User opens Faucet panel and requests test payroll tokens.
@@ -28,9 +28,9 @@
 
 ## 6. Execute Payroll
 - `executePayroll(runId, token, from, recipients, encryptedAmounts, inputProofs, validUntil, nonce)` is submitted.
-- In `porto_direct`, user signs and submits directly from Porto AA.
-- In backend mode, server-side observer signer can submit after operator precheck.
-- Note for MVP: larger payroll batches can hit AA relay payload limits because each payment carries encrypted handle + input proof. Current operational cap is 15 payments per run.
+- In `wallet_direct`, the connected wallet submits the payroll transaction.
+- In backend mode, the server-side observer signer can submit after operator precheck.
+- Note for MVP: larger payroll batches carry encrypted handle + input proof payloads. Current operational cap is 15 payments per run.
 
 ## 7. Confirm & Report
 - UI watches transaction confirmation.

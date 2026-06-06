@@ -4,7 +4,7 @@
 - Node.js >= 20
 - npm >= 9
 - Sepolia RPC URL
-- Funded Sepolia accounts for merchant/observer/faucet
+- Funded Sepolia accounts for observer/faucet
 
 ## Install
 ```bash
@@ -27,15 +27,13 @@ Deploy contracts from `packages/contracts` and capture:
 
 ## Backend Env (`apps/api/.env.local`)
 Required:
-- `MERCHANT_ADDRESS`
-- `MERCHANT_PRIVATE_KEY`
 - `PAYROLL_EXECUTOR_ADDRESS`
 - `PAYROLL_TOKEN_ADDRESS`
 - `SEPOLIA_RPC_URL`
+- `OBSERVER_PRIVATE_KEY`
 
 Recommended:
 - `FAUCET_MNEMONIC` (or `FAUCET_PRIVATE_KEY`)
-- `OBSERVER_PRIVATE_KEY`
 - `CORS_ORIGIN` and/or `CORS_ORIGINS`
 - `MAX_PAYMENT_COUNT=100`
 
@@ -55,7 +53,7 @@ Required:
 - `VITE_OBSERVER_ADDRESS`
 
 Runtime mode flags:
-- `VITE_EXECUTION_MODE=porto_direct`
+- `VITE_EXECUTION_MODE=backend` (or `wallet_direct`)
 - `VITE_DECRYPT_MODE=observer`
 - `VITE_FAUCET_MODE=backend`
 
@@ -66,10 +64,3 @@ npm run dev
 
 ## CORS and Tunnels
 If frontend/backend are on different origins (Cloudflare/ngrok/tailscale), update API CORS env to include the active frontend URL, then restart API.
-
-## Porto Fee Sponsoring Reference
-- Official Porto guide: `https://porto.sh/sdk/guides/sponsoring`
-- Key steps we follow:
-  - onboard merchant account (`pnpx porto onboard --admin-key --testnet`)
-  - expose merchant route at `/porto/merchant`
-  - pass `merchantUrl` into `Porto.create(...)`

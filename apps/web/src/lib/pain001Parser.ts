@@ -43,15 +43,15 @@ export function parsePain001(xml: string): PayrollRunDraft {
 
   const msgId = readText(customerInit, "MsgId");
   const createdAt = readText(customerInit, "CreDtTm") || new Date().toISOString();
-  const companyName = readText(customerInit, "Nm") || "Uploaded Employer";
+  const companyName = readText(customerInit, "Nm") || "Uploaded DAO";
   if (!msgId) throw new Error("Missing GrpHdr.MsgId.");
 
   const txs = allByLocalName(customerInit, "CdtTrfTxInf");
   if (txs.length === 0) throw new Error("No payments found in PmtInf.CdtTrfTxInf.");
 
   const payments = txs.map((tx, i) => {
-    const endToEndId = readText(tx, "EndToEndId") || `EMP-${String(i + 1).padStart(3, "0")}`;
-    const name = readText(tx, "Nm") || `Employee ${i + 1}`;
+    const endToEndId = readText(tx, "EndToEndId") || `CNT-${String(i + 1).padStart(3, "0")}`;
+    const name = readText(tx, "Nm") || `Contributor ${i + 1}`;
     const addr = readText(tx, "Id");
     if (!ADDRESS_RE.test(addr)) {
       throw new Error(`Invalid recipient address at payment ${i + 1}: ${addr || "(empty)"}`);
@@ -64,7 +64,7 @@ export function parsePain001(xml: string): PayrollRunDraft {
 
     return {
       id: endToEndId,
-      role: "Employee",
+      role: "Contributor",
       name,
       recipient: addr as Address,
       amountMinor,

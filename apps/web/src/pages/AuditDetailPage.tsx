@@ -6,26 +6,26 @@ export function AuditDetailPage() {
   const run = getActivePayrollRun();
   const state = run.executionState || { status: "idle" as const };
   const timeline = [
-    { label: "pain.001 Uploaded", detail: "File parsed and canonical order locked.", time: new Date(run.createdAt).toISOString() },
-    { label: "Draft Validated", detail: "Address/amount checks passed.", time: new Date(run.createdAt).toISOString() },
+    { label: "Uploaded", detail: "pain.001 parsed.", time: new Date(run.createdAt).toISOString() },
+    { label: "Validated", detail: "Checks passed.", time: new Date(run.createdAt).toISOString() },
     state.submittedAt
       ? {
-          label: "Execution Submitted",
+          label: "Submitted",
           detail: `Tx ${state.txHash ? shortHash(state.txHash) : "-"}`,
           txUrl: state.txHash ? getTxExplorerUrl(state.txHash) : undefined,
           time: state.submittedAt
         }
       : null,
     state.confirmedAt
-      ? { label: "Onchain Confirmed", detail: `Block ${state.blockNumber || "-"}`, time: state.confirmedAt }
+      ? { label: "Confirmed", detail: `Block ${state.blockNumber || "-"}`, time: state.confirmedAt }
       : null,
     state.status === "failed"
-      ? { label: "Execution Failed", detail: state.error || "Unknown error", time: new Date().toISOString() }
+      ? { label: "Failed", detail: state.error || "Unknown error", time: new Date().toISOString() }
       : null
   ].filter(Boolean) as Array<{ label: string; detail: string; txUrl?: string; time: string }>;
 
   return (
-    <Section title={`Run Audit: ${run.runId || "-"}`} subtitle="Traceability timeline for file, validation, execution, and reporting.">
+    <Section title={`Audit: ${run.runId || "-"}`} subtitle="File, checks, settlement.">
       <ol className="timeline">
         {timeline.map((item) => (
           <li key={item.label}>

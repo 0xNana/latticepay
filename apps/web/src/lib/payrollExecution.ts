@@ -1,7 +1,7 @@
 import type { Address, Hex } from "viem";
 import { encodeFunctionData, keccak256, toHex } from "viem";
 import { appConfig, hasExecutionConfig } from "./config";
-import { portoProvider, publicClient, walletClient } from "./portoClient";
+import { ensureSepoliaNetwork, getActiveWalletAccount, publicClient, walletClient } from "./walletClient";
 import { payrollExecutorAbi } from "./contracts/payrollExecutorAbi";
 
 type ExecuteParams = {
@@ -15,7 +15,7 @@ type ExecuteParams = {
 export async function executePayrollWithIntent(params: ExecuteParams) {
   const hexBytes = (value: Hex) => Math.max(0, (value.length - 2) / 2);
   const log = (...args: unknown[]) => {
-    if (appConfig.portoDebug) console.debug("[payroll:execute]", ...args);
+    if (appConfig.walletDebug) console.debug("[payroll:execute]", ...args);
     if (params.onLog) {
       const line = args
         .map((arg) => (typeof arg === "string" ? arg : JSON.stringify(arg)))
@@ -44,20 +44,19 @@ export async function executePayrollWithIntent(params: ExecuteParams) {
   const proofBytesTotal = params.inputProofs.reduce((sum, proof) => sum + hexBytes(proof), 0);
   const proofBytesAvg = params.inputProofs.length ? Math.round(proofBytesTotal / params.inputProofs.length) : 0;
   const handleBytesTotal = params.encryptedAmounts.reduce((sum, handle) => sum + hexBytes(handle), 0);
-  log("checking active porto account...");
-  const providerAccounts = (await portoProvider.request({ method: "eth_accounts" })) as Address[];
-  const activeAccount = providerAccounts[0];
+  log("checking active wallet account...");
+  const activeAccount = await getActiveWalletAccount();
   if (!activeAccount) {
-    throw new Error("No active Porto account. Please log in again.");
+    throw new Error("No active wallet account. Please connect your wallet again.");
   }
   if (activeAccount.toLowerCase() !== params.smartAccount.toLowerCase()) {
     throw new Error(
-      `Account mismatch. Active Porto account is ${activeAccount}, but execution requested ${params.smartAccount}. Please reconnect Porto from the execution panel.`
+      `Account mismatch. Active wallet account is ${activeAccount}, but execution requested ${params.smartAccount}. Please reconnect your wallet from the execution panel.`
     );
   }
 
   log("start", {
-    smartAccount: activeAccount,
+    walletAccount: activeAccount,
     payrollExecutor,
     payrollToken,
     paymentCount: params.recipients.length,
@@ -73,7 +72,8 @@ export async function executePayrollWithIntent(params: ExecuteParams) {
   let txHash: Hex;
   let runId: Hex = keccak256(toHex(`${activeAccount}-${Date.now()}`));
   try {
-    if (appConfig.executionMode === "porto_direct") {
+    if (appConfig.executionMode === "wallet_direct") {
+      await ensureSepoliaNetwork();
       const nonce = (await publicClient.readContract({
         address: payrollExecutor,
         abi: payrollExecutorAbi,
@@ -136,7 +136,7 @@ export async function executePayrollWithIntent(params: ExecuteParams) {
           nonce
         ]
       });
-      log("submitted directly via porto", { txHash, runId });
+      log("submitted directly via wallet", { txHash, runId });
     } else {
       if (!appConfig.executeUrl) throw new Error("Missing execution endpoint. Set VITE_EXECUTE_URL or VITE_API_BASE_URL.");
       log("submitting to backend observer...");
@@ -174,8 +174,8 @@ export async function executePayrollWithIntent(params: ExecuteParams) {
     runId,
     txHash,
     note:
-      appConfig.executionMode === "porto_direct"
-        ? "Execution submitted directly via Porto."
+      appConfig.executionMode === "wallet_direct"
+        ? "Execution submitted directly from connected wallet."
         : "Execution submitted via observer backend signer."
   };
 }

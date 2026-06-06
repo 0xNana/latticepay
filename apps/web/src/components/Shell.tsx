@@ -4,19 +4,18 @@ import type { PropsWithChildren } from "react";
 import type { Address } from "viem";
 import {
   claimPayrollTokens,
-  getSavedPortoAccount,
+  getSavedWalletAccount,
   loginUser,
-  savePortoAccount,
-  signUpWithPasskeyAndFund,
+  saveWalletAccount,
   waitForTxConfirmation
-} from "../lib/portoClient";
+} from "../lib/walletClient";
 import { checkRelayerCdnHealth } from "../lib/fheClient";
 
 const nav = [
-  { to: "/dashboard", label: "Dashboard" },
+  { to: "/dashboard", label: "Home" },
   { to: "/payroll/draft", label: "Payroll" },
-  { to: "/runs", label: "Runs" },
-  { to: "/payout", label: "Balance" },
+  { to: "/runs", label: "Audit" },
+  { to: "/payout", label: "Portal" },
 ];
 const TOKEN_DECIMALS = 6n;
 const TOKEN_SYMBOL = "cUSDC";
@@ -38,7 +37,6 @@ export function Shell({ children }: PropsWithChildren) {
   const [toast, setToast] = useState<{ message: string; tone: "info" | "success" | "error" } | null>(null);
   const [walletAddress, setWalletAddress] = useState<Address | null>(null);
   const [showFaucetCard, setShowFaucetCard] = useState(false);
-  const [showHowItWorksCard, setShowHowItWorksCard] = useState(false);
   const [faucetAmount, setFaucetAmount] = useState("$1000000");
   const [relayerHealthy, setRelayerHealthy] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
@@ -57,7 +55,7 @@ export function Shell({ children }: PropsWithChildren) {
   };
 
   useEffect(() => {
-    const saved = getSavedPortoAccount();
+    const saved = getSavedWalletAccount();
     if (saved) setWalletAddress(saved);
   }, []);
 
@@ -83,30 +81,15 @@ export function Shell({ children }: PropsWithChildren) {
 
   const onLogin = async () => {
     setBusy(true);
-    showToast("Logging in...", "info", 0);
+    showToast("Connecting...", "info", 0);
     try {
       const address = await loginUser();
       if (!address) throw new Error("No account returned.");
       setWalletAddress(address as Address);
-      savePortoAccount(address as Address);
-      showToast("Logged in.", "success");
+      saveWalletAccount(address as Address);
+      showToast("Connected.", "success");
     } catch (error) {
-      showToast(`Login failed: ${(error as Error).message}`, "error", 5000);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const onSignUp = async () => {
-    setBusy(true);
-    showToast("Creating smart account + passkey...", "info", 0);
-    try {
-      const result = await signUpWithPasskeyAndFund();
-      setWalletAddress(result.address as Address);
-      savePortoAccount(result.address as Address);
-      showToast(result.note, "success");
-    } catch (error) {
-      showToast(`Sign up failed: ${(error as Error).message}`, "error", 5000);
+      showToast(`Connection failed: ${(error as Error).message}`, "error", 5000);
     } finally {
       setBusy(false);
     }
@@ -114,7 +97,7 @@ export function Shell({ children }: PropsWithChildren) {
 
   const onFaucetTap = async () => {
     if (!walletAddress) {
-      showToast("Connect with Login/Sign up before faucet claim.", "error");
+      showToast("Connect a payroll wallet before faucet claim.", "error");
       return;
     }
     let amountRaw: bigint;
@@ -148,18 +131,20 @@ export function Shell({ children }: PropsWithChildren) {
     }
   };
 
-  const onLogout = () => {
+  const onDisconnect = () => {
     setWalletAddress(null);
-    savePortoAccount(null);
+    saveWalletAccount(null);
     setShowFaucetCard(false);
-    setShowHowItWorksCard(false);
-    showToast("Logged out.", "success");
+    showToast("Disconnected.", "success");
   };
 
   return (
     <div className="app">
       <header className="topbar">
-        <div className="brand">cPay</div>
+        <div className="brand-block">
+          <div className="brand">cPay</div>
+          <span>DAO payroll</span>
+        </div>
         <button
           className="nav-toggle"
           type="button"
@@ -185,35 +170,6 @@ export function Shell({ children }: PropsWithChildren) {
           })}
         </nav>
         <div className="auth-actions">
-          <div className="faucet-wrap how-it-works-wrap">
-            <button className="button ghost" onClick={() => setShowHowItWorksCard((v) => !v)} disabled={busy}>
-              How it works
-            </button>
-            {showHowItWorksCard ? (
-              <div className="faucet-card info-card">
-                <div className="info-card-head">How it works</div>
-                <div className="info-step">
-                  <strong>1. Employer encrypts</strong>
-                  <span>Upload `pain.001` and encrypt salaries locally before execution.</span>
-                </div>
-                <div className="info-step">
-                  <strong>2. Contract settles</strong>
-                  <span>Submit one confidential batch transaction for payroll settlement.</span>
-                </div>
-                <div className="info-step">
-                  <strong>3. Employee decrypts</strong>
-                  <span>Only the recipient wallet can reveal the final payment amount.</span>
-                </div>
-                <div className="info-step">
-                  <strong>Employee portal</strong>
-                  <span>Open Balance to verify the wallet and decrypt the confidential payroll payment.</span>
-                </div>
-                <Link className="button" to="/payout" onClick={() => setShowHowItWorksCard(false)}>
-                  Open Employee Portal
-                </Link>
-              </div>
-            ) : null}
-          </div>
           <div className="faucet-wrap">
             <button className="button ghost" onClick={() => setShowFaucetCard((v) => !v)} disabled={busy}>
               <span className="faucet-icon" aria-hidden="true">
@@ -239,25 +195,20 @@ export function Shell({ children }: PropsWithChildren) {
               </div>
             ) : null}
           </div>
-          {!isAuthenticated ? <button className="button ghost" onClick={onLogin} disabled={busy}>Login</button> : null}
-          {!isAuthenticated ? (
-            <button className="button" onClick={onSignUp} disabled={busy}>
-              Sign up
-            </button>
-          ) : null}
+          {!isAuthenticated ? <button className="button ghost" onClick={onLogin} disabled={busy}>Connect wallet</button> : null}
           {isAuthenticated ? (
             <button
               className="address-chip"
               disabled={busy}
-              title="Open balance"
+              title="Open contributor portal"
               onClick={() => navigate("/payout")}
             >
               {truncateAddress(walletAddress!)}
             </button>
           ) : null}
           {isAuthenticated ? (
-            <button className="button ghost" onClick={onLogout} disabled={busy}>
-              Logout
+            <button className="button ghost" onClick={onDisconnect} disabled={busy}>
+              Disconnect
             </button>
           ) : null}
           {relayerHealthy === false ? (

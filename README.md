@@ -1,6 +1,6 @@
 # cPay — Confidential Payroll
 
-cPay is a confidential onchain payroll app built with Zama FHEVM, ERC-7984, and Porto smart accounts.
+cPay is a confidential onchain payroll app built with Zama FHEVM, ERC-7984, and standard browser wallets.
 
 It supports a practical payroll workflow:
 - ingest ISO 20022 `pain.001`
@@ -13,7 +13,7 @@ It supports a practical payroll workflow:
 
 ## Monorepo Structure
 - `apps/web` — frontend (Vite + React)
-- `apps/api` — backend API (merchant sponsoring, faucet, decrypt, execute, health)
+- `apps/api` — backend API (faucet, decrypt, execute, health)
 - `packages/contracts` — Solidity contracts and tests
 - `docs` — public docs
 
@@ -47,10 +47,9 @@ npm run contracts:test
 - Execute payroll through ERC-7984 confidential transfers.
 - Download local payroll receipt as `pain.002`.
 - Decrypt confidential balances from the connected account.
-- Configure payment email alerts from Dashboard with a local email preview card (non-marketing, no campaign collection).
 
 ## Runtime Modes (MVP)
-- Execution: `porto_direct`
+- Execution: `backend` by default, `wallet_direct` for connected-wallet submission
 - Decrypt: `observer`
 - Faucet: `backend`
 

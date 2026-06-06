@@ -8,7 +8,6 @@ const asAddress = (value: string | undefined): Address | undefined => {
 export const appConfig = {
   chainId: 11155111,
   apiBaseUrl: import.meta.env.VITE_API_BASE_URL as string | undefined,
-  merchantUrl: import.meta.env.VITE_PORTO_MERCHANT_URL as string | undefined,
   decryptUrl: import.meta.env.VITE_DECRYPT_URL as string | undefined,
   decryptMode: (import.meta.env.VITE_DECRYPT_MODE as string | undefined) || "hybrid",
   executeUrl: import.meta.env.VITE_EXECUTE_URL as string | undefined,
@@ -23,12 +22,9 @@ export const appConfig = {
   relayerSdkCdn:
     (import.meta.env.VITE_RELAYER_SDK_CDN as string | undefined) ||
     "https://cdn.zama.org/relayer-sdk-js/0.4.1/relayer-sdk-js.umd.cjs",
-  portoDebug: (import.meta.env.VITE_PORTO_DEBUG as string | undefined) === "true"
+  walletDebug: (import.meta.env.VITE_WALLET_DEBUG as string | undefined) === "true"
 };
 
-if (!appConfig.merchantUrl && appConfig.apiBaseUrl) {
-  appConfig.merchantUrl = `${appConfig.apiBaseUrl.replace(/\/$/, "")}/porto/merchant`;
-}
 
 if (!appConfig.faucetUrl && appConfig.apiBaseUrl) {
   appConfig.faucetUrl = `${appConfig.apiBaseUrl.replace(/\/$/, "")}/faucet/claim`;

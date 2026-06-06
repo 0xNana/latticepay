@@ -4,13 +4,13 @@ import { decodeEventLog } from "viem";
 import { appConfig } from "../lib/config";
 import { getTxExplorerUrl, shortHash } from "../lib/explorer";
 import {
-  connectPortoAccount,
-  getSavedPortoAccount,
+  connectWallet,
+  getSavedWalletAccount,
   isExecutorOperator,
-  savePortoAccount,
+  saveWalletAccount,
   setExecutorOperator,
   waitForTxConfirmation
-} from "../lib/portoClient";
+} from "../lib/walletClient";
 import { encryptPayrollAmounts } from "../lib/fheClient";
 import { executePayrollWithIntent } from "../lib/payrollExecution";
 import { payrollExecutorAbi } from "../lib/contracts/payrollExecutorAbi";
@@ -18,10 +18,10 @@ import { getActivePayrollRun, markPaymentsStatus, setPaymentResults, updateExecu
 
 export function ExecutionActions() {
   const run = getActivePayrollRun();
-  const [account, setAccount] = useState<Address | null>(() => getSavedPortoAccount());
+  const [account, setAccount] = useState<Address | null>(() => getSavedWalletAccount());
   const [status, setStatus] = useState<string>("Idle");
   const [txHash, setTxHash] = useState<string | null>(null);
-  const [terminalLines, setTerminalLines] = useState<string[]>(["Payroll Run - Processing"]);
+  const [terminalLines, setTerminalLines] = useState<string[]>(["Private DAO Payroll - Processing"]);
   const [techLines, setTechLines] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
 
@@ -43,13 +43,13 @@ export function ExecutionActions() {
 
   const onConnect = async () => {
     setBusy(true);
-    setStatus("Connecting Porto account...");
-    writeLine("> connecting porto account...");
+    setStatus("Connecting wallet...");
+    writeLine("> connecting wallet...");
     try {
-      const address = await connectPortoAccount({ createAccount: false });
-      if (!address) throw new Error("No account returned from Porto.");
+      const address = await connectWallet();
+      if (!address) throw new Error("No wallet account returned.");
       setAccount(address as Address);
-      savePortoAccount(address as Address);
+      saveWalletAccount(address as Address);
       setStatus(`Connected: ${address}`);
       writeLine(`ok connected ${address}`);
     } catch (error) {
@@ -71,14 +71,14 @@ export function ExecutionActions() {
     setTechLines([]);
     updateExecutionState({ status: "idle", error: undefined });
     markPaymentsStatus("Pending");
-    setStatus("Initializing payroll file...");
+    setStatus("Initializing DAO payroll file...");
     const total = [...run.execution.clearAmounts].reduce((acc, n) => acc + BigInt(n), 0n);
-    writeLine("Initializing payroll file (ISO 20022)...");
-    writeLine("Payroll payload prepared ✓");
+    writeLine("Initializing DAO payroll file (ISO 20022)...");
+    writeLine("Payroll payload prepared");
     writeLine("Verifying payer account...");
-    writeLine(`Account verified (${short(account)}) ✓`);
-    writeLine("Payroll summary");
-    writeLine(`- Payments: ${run.execution.recipients.length}`);
+    writeLine(`Account verified (${short(account)})`);
+    writeLine("Private payroll summary");
+    writeLine(`- Contributors: ${run.execution.recipients.length}`);
     writeLine(`- Total amount: ${formatTokenAmount(total)}`);
     writeLine("Network");
     writeLine(`- Environment: Sepolia (${appConfig.chainId})`);
@@ -88,8 +88,8 @@ export function ExecutionActions() {
     writeTech(`totalRaw=${total.toString()}`);
     setStatus("Preparing execution environment...");
     writeLine("Preparing execution environment...");
-    writeLine(`Executor configured (${short(appConfig.payrollExecutor || "unset")}) ✓`);
-    writeLine(`Settlement token configured (${short(appConfig.payrollToken || "unset")}) ✓`);
+    writeLine(`Executor configured (${short(appConfig.payrollExecutor || "unset")})`);
+    writeLine(`Settlement token configured (${short(appConfig.payrollToken || "unset")})`);
     try {
       if (!appConfig.payrollExecutor) throw new Error("Missing VITE_PAYROLL_EXECUTOR_ADDRESS.");
       const alreadyOperator = await isExecutorOperator(account, appConfig.payrollExecutor);
@@ -97,12 +97,12 @@ export function ExecutionActions() {
         const until = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30;
         writeLine("Authorizing payout permissions...");
         const opTx = await setExecutorOperator(account, appConfig.payrollExecutor, until);
-        writeLine(`Operator authorization submitted (${short(opTx)}) ✓`);
+        writeLine(`Operator authorization submitted (${short(opTx)})`);
         writeTech(`operatorTx=${opTx}`);
         await waitForTxConfirmation(opTx);
-        writeLine("Payout permission confirmed ✓");
+        writeLine("Payout permission confirmed");
       } else {
-        writeLine("Payout permission already active ✓");
+        writeLine("Payout permission already active");
       }
     } catch (error) {
       setStatus("Payroll run failed");
@@ -117,14 +117,14 @@ export function ExecutionActions() {
     writeLine("Encrypting payroll data...");
     try {
       const encrypted = await encryptPayrollAmounts(account, [...run.execution.clearAmounts]);
-      writeLine("Confidential inputs encrypted ✓");
-      writeLine(`Secure proofs generated (${encrypted.inputProofs.length}) ✓`);
+      writeLine("Confidential inputs encrypted");
+      writeLine(`Secure proofs generated (${encrypted.inputProofs.length})`);
       writeTech(`encryptedHandles=${encrypted.encryptedAmounts.length}`);
       writeTech(`firstHandle=${encrypted.encryptedAmounts[0] || "none"}`);
       writeTech(`firstProofSize=${encrypted.inputProofs[0]?.length || 0}`);
       setStatus("Submitting payroll run...");
       writeLine("Submitting payroll run...");
-      writeLine("Payments batched ✓");
+      writeLine("Contributor payments batched");
       writeLine("Submitting transaction to network...");
       const result = await executePayrollWithIntent({
         smartAccount: account,
@@ -134,7 +134,7 @@ export function ExecutionActions() {
         onLog: (line) => writeTech(line)
       });
       setStatus(result.note);
-      writeLine("Transaction submitted ✓");
+      writeLine("Transaction submitted");
       writeTech(`runId=${result.runId}`);
       if (result.txHash) {
         setTxHash(result.txHash);
@@ -150,7 +150,7 @@ export function ExecutionActions() {
         writeLine("Awaiting network confirmation...");
         writeLine(`Transaction hash: ${result.txHash}`);
         const receipt = await waitForTxConfirmation(result.txHash);
-        writeLine(`Confirmed in block ${receipt.blockNumber.toString()} ✓`);
+        writeLine(`Confirmed in block ${receipt.blockNumber.toString()}`);
         writeTech(`block=${receipt.blockNumber.toString()}`);
         writeTech(`receiptStatus=${receipt.status}`);
         const outcomes: boolean[] = Array(run.execution.recipients.length).fill(false);
@@ -171,9 +171,9 @@ export function ExecutionActions() {
         }
         setPaymentResults(outcomes);
         const okCount = outcomes.filter(Boolean).length;
-        writeLine("Payroll run completed");
+        writeLine("Private payroll run completed");
         writeLine(`- Run ID: ${result.runId}`);
-        writeLine(`- Successful payments: ${okCount}`);
+        writeLine(`- Successful contributor payments: ${okCount}`);
         writeLine(`- Failed payments: ${outcomes.length - okCount}`);
         updateExecutionState({
           status: "confirmed",
@@ -209,7 +209,7 @@ export function ExecutionActions() {
 
   return (
     <div className="terminal-panel">
-      <div className="terminal-head">Payroll Run in Progress</div>
+      <div className="terminal-head">Private Payroll Execution</div>
       <div className="terminal-meta">
         <p><strong>Account:</strong> {account || "not connected"}</p>
         <p><strong>Status:</strong> {status}</p>
@@ -230,8 +230,8 @@ export function ExecutionActions() {
         </pre>
       </details>
       <div className="cta-row">
-        {!account ? <button className="button ghost" onClick={onConnect} disabled={busy}>Connect Porto</button> : null}
-        <button className="button button-run-payroll" onClick={onExecute} disabled={busy || !account}>Run Payroll</button>
+        {!account ? <button className="button ghost" onClick={onConnect} disabled={busy}>Connect wallet</button> : null}
+        <button className="button button-run-payroll" onClick={onExecute} disabled={busy || !account}>Run Private Payroll</button>
       </div>
     </div>
   );

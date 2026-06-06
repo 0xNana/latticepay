@@ -3,7 +3,7 @@ import type { Address } from "viem";
 import { Section } from "../components/Cards";
 import { appConfig } from "../lib/config";
 import { getDecryptedPayrollBalance } from "../lib/fheClient";
-import { getSavedPortoAccount, getTokenObserver, setTokenObserver, waitForTxConfirmation } from "../lib/portoClient";
+import { getSavedWalletAccount, getTokenObserver, setTokenObserver, waitForTxConfirmation } from "../lib/walletClient";
 
 const TOKEN_DECIMALS = 6n;
 
@@ -22,7 +22,7 @@ export function PayoutPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    const saved = getSavedPortoAccount();
+    const saved = getSavedWalletAccount();
     if (saved) setAccount(saved);
   }, []);
 
@@ -83,31 +83,31 @@ export function PayoutPage() {
   };
 
   return (
-    <Section title="Employee Portal" subtitle="Verify the wallet, then decrypt the confidential payroll balance.">
+    <Section title="Portal" subtitle="Decrypt recipient balance.">
       <div className="grid-2">
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>Confidential Balance</h3>
+          <h3 style={{ marginTop: 0 }}>Balance</h3>
           <p><strong>Wallet:</strong> {account || "Not connected"}</p>
           <p><strong>Encrypted balance:</strong> *****</p>
-          <p><strong>Decrypted balance:</strong> {decryptedBalance || "—"}</p>
+          <p><strong>Decrypted balance:</strong> {decryptedBalance || "-"}</p>
           {decryptedBalance ? <p><strong>Session:</strong> Decrypted for this session</p> : null}
           <div className="cta-row">
             <span>{status}</span>
             <button className="button" onClick={onDecrypt} disabled={busy || !account}>
-              {busy ? "Please wait..." : "Decrypt Payment"}
+              {busy ? "Working..." : "Decrypt"}
             </button>
           </div>
         </div>
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>Decryption Flow</h3>
+          <h3 style={{ marginTop: 0 }}>Decrypt</h3>
           <ul className="list compact-list">
-            <li>Wallet verified against the payroll token observer</li>
-            <li>Encrypted payment stays hidden until employee approval</li>
-            <li>Balance decrypts only for the connected recipient account</li>
+            <li>Wallet verified</li>
+            <li>Hidden until approval</li>
+            <li>Connected wallet only</li>
           </ul>
           {decryptedBalance ? (
             <div className="success-panel">
-              <p style={{ margin: 0, fontWeight: 700 }}>Payment decrypted</p>
+              <p style={{ margin: 0, fontWeight: 700 }}>Decrypted</p>
               <p style={{ margin: "6px 0 0" }}>Amount received: {decryptedBalance}</p>
             </div>
           ) : null}

@@ -1,15 +1,11 @@
 import { createServer } from "node:http";
-import { Route, Router } from "porto/server";
-import { createPublicClient, createWalletClient, decodeFunctionData, http, keccak256, toHex } from "viem";
+import { createPublicClient, createWalletClient, http, keccak256, toHex } from "viem";
 import { mnemonicToAccount, privateKeyToAccount } from "viem/accounts";
 import { sepolia } from "viem/chains";
 import { createInstance, SepoliaConfig } from "@zama-fhe/relayer-sdk/node";
 
 const PORT = Number(process.env.PORT || 8787);
-const CHAIN_ID = Number(process.env.CHAIN_ID || 11155111);
-const MERCHANT_ADDRESS = process.env.MERCHANT_ADDRESS;
-const MERCHANT_PRIVATE_KEY = process.env.MERCHANT_PRIVATE_KEY;
-const FAUCET_PRIVATE_KEY = process.env.FAUCET_PRIVATE_KEY || MERCHANT_PRIVATE_KEY;
+const FAUCET_PRIVATE_KEY = process.env.FAUCET_PRIVATE_KEY;
 const OBSERVER_PRIVATE_KEY = process.env.OBSERVER_PRIVATE_KEY || FAUCET_PRIVATE_KEY;
 const FAUCET_MNEMONIC = process.env.FAUCET_MNEMONIC;
 const FAUCET_ACCOUNT_INDEX = Number(process.env.FAUCET_ACCOUNT_INDEX || 0);
@@ -24,7 +20,6 @@ const CORS_ORIGINS = (process.env.CORS_ORIGINS || "")
   .filter(Boolean);
 const MAX_PAYMENT_COUNT = Number(process.env.MAX_PAYMENT_COUNT || 15);
 const MAX_FAUCET_CLAIM = BigInt(process.env.MAX_FAUCET_CLAIM || "1000000000000");
-const PORTO_DEBUG = (process.env.PORTO_DEBUG || "true") === "true";
 
 const normalizeOrigin = (value) => {
   if (!value) return value;
@@ -33,15 +28,16 @@ const normalizeOrigin = (value) => {
   return trimmed.replace(/\/+$/, "");
 };
 
-if (!MERCHANT_ADDRESS || !MERCHANT_PRIVATE_KEY || !PAYROLL_EXECUTOR_ADDRESS || !PAYROLL_TOKEN_ADDRESS) {
-  throw new Error(
-    "Missing required env vars: MERCHANT_ADDRESS, MERCHANT_PRIVATE_KEY, PAYROLL_EXECUTOR_ADDRESS, PAYROLL_TOKEN_ADDRESS"
-  );
+if (!PAYROLL_EXECUTOR_ADDRESS || !PAYROLL_TOKEN_ADDRESS) {
+  throw new Error("Missing required env vars: PAYROLL_EXECUTOR_ADDRESS, PAYROLL_TOKEN_ADDRESS");
 }
 if (!FAUCET_PRIVATE_KEY && !FAUCET_MNEMONIC) {
   throw new Error(
-    "Missing faucet signer credentials. Set FAUCET_MNEMONIC or FAUCET_PRIVATE_KEY (or MERCHANT_PRIVATE_KEY fallback)."
+    "Missing faucet signer credentials. Set FAUCET_MNEMONIC or FAUCET_PRIVATE_KEY."
   );
+}
+if (!OBSERVER_PRIVATE_KEY) {
+  throw new Error("Missing required env var: OBSERVER_PRIVATE_KEY");
 }
 
 const payrollExecutorAbi = [
@@ -131,78 +127,6 @@ const erc20Abi = [
     outputs: [{ name: "", type: "bool" }]
   }
 ];
-
-const sponsor = (request) => {
-  const log = (...args) => {
-    if (PORTO_DEBUG) console.log("[merchant:sponsor]", ...args);
-  };
-  const reject = (reason, details = {}) => {
-    log("reject", reason, details);
-    return false;
-  };
-
-  if (request.chainId !== CHAIN_ID) return reject("chain_mismatch", { got: request.chainId, expected: CHAIN_ID });
-  if (!request.calls || request.calls.length !== 1) return reject("calls_count_invalid", { count: request.calls?.length || 0 });
-
-  const call = request.calls[0];
-  if (!call.to || !call.data) return reject("call_missing_to_or_data");
-  if (call.to.toLowerCase() !== PAYROLL_EXECUTOR_ADDRESS.toLowerCase()) {
-    return reject("target_not_allowlisted", { to: call.to, expected: PAYROLL_EXECUTOR_ADDRESS });
-  }
-
-  try {
-    const decoded = decodeFunctionData({ abi: payrollExecutorAbi, data: call.data });
-    if (decoded.functionName !== "executePayroll") return reject("selector_not_allowlisted", { fn: decoded.functionName });
-
-    const [runId, token, from, recipients, encryptedAmounts, inputProofs, validUntil, nonce] = decoded.args;
-    token;
-    from;
-
-    if (!Array.isArray(recipients) || recipients.length === 0) return reject("empty_or_invalid_recipients");
-    if (recipients.length > MAX_PAYMENT_COUNT) return reject("payment_count_exceeded", { count: recipients.length, max: MAX_PAYMENT_COUNT });
-    if (!Array.isArray(encryptedAmounts) || encryptedAmounts.length !== recipients.length) {
-      return reject("amounts_length_mismatch", { recipients: recipients.length, encryptedAmounts: encryptedAmounts?.length || 0 });
-    }
-    if (!Array.isArray(inputProofs) || inputProofs.length !== recipients.length) {
-      return reject("proofs_length_mismatch", { recipients: recipients.length, inputProofs: inputProofs?.length || 0 });
-    }
-    if (inputProofs.some((p) => !p || p === "0x")) return reject("empty_input_proof");
-
-    const now = Math.floor(Date.now() / 1000);
-    const expiry = Number(validUntil);
-    if (!Number.isFinite(expiry) || expiry <= now) return reject("expired_or_invalid_validUntil", { expiry, now });
-
-    log("allow", {
-      runId,
-      nonce: nonce?.toString?.() || nonce,
-      paymentCount: recipients.length,
-      validUntil: expiry,
-      secondsUntilExpiry: expiry - now
-    });
-    return true;
-  } catch (error) {
-    return reject("decode_or_validation_error", { error: error?.message || String(error) });
-  }
-};
-
-const app = Router({
-  basePath: "/porto",
-  cors: {
-    origin:
-      CORS_ORIGIN === "*"
-        ? "*"
-        : [...new Set([normalizeOrigin(CORS_ORIGIN), ...CORS_ORIGINS.map(normalizeOrigin)].filter(Boolean))],
-    allowMethods: ["POST", "OPTIONS"],
-    allowHeaders: ["Content-Type"]
-  }
-}).route(
-  "/merchant",
-  Route.merchant({
-    address: MERCHANT_ADDRESS,
-    key: MERCHANT_PRIVATE_KEY,
-    sponsor
-  })
-);
 
 const faucetSigner = FAUCET_MNEMONIC
   ? mnemonicToAccount(FAUCET_MNEMONIC, {
@@ -541,14 +465,14 @@ createServer(async (req, res) => {
     return;
   }
 
-  return app.listener(req, res);
+  writeCors(req, res);
+  res.writeHead(404, { "content-type": "application/json" });
+  res.end(JSON.stringify({ error: "Not found" }));
 }).listen(PORT, "0.0.0.0", () => {
   console.log(`cPay API listening on 0.0.0.0:${PORT}`);
-  console.log(`Merchant route: /porto/merchant`);
   console.log(`Faucet route: /faucet/claim`);
   console.log(`Decrypt route: /decrypt/balance`);
   console.log(`Execute route: /payroll/execute`);
-  console.log(`Merchant account: ${MERCHANT_ADDRESS}`);
   console.log(`Faucet signer: ${faucetSigner.address}`);
   console.log(`Observer signer: ${observerSigner.address}`);
 });

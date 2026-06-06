@@ -8,8 +8,8 @@ import { getActivePayrollRun } from "../lib/payrollRunStore";
 export function PayrollCompletedPage() {
   const run = getActivePayrollRun();
   return (
-    <Section title={`Payroll Run: ${run.cycleName}`} subtitle="Completed and ready for reporting.">
-      <Table headers={["Role", "Employee", "Recipient", "Amount", "Status"]}>
+    <Section title={`Complete: ${run.cycleName}`} subtitle="Receipt and audit.">
+      <Table headers={["Role", "Contributor", "Recipient", "Amount", "Status"]}>
         {run.payments.map((p) => (
           <tr key={p.id}>
             <td>{p.role}</td>
@@ -33,9 +33,9 @@ export function PayrollCompletedPage() {
       </p>
       <div className="cta-row">
         <button className="button button-receipt" onClick={() => downloadPain002Receipt(run)}>
-          Download Payroll Receipt (pain.002)
+          Download pain.002
         </button>
-        <Link className="button" to="/runs/audit">Audit Detail</Link>
+        <Link className="button" to="/runs/audit">Audit detail</Link>
       </div>
     </Section>
   );
