@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { Address } from "viem";
 import { Section } from "../components/Cards";
 import { getDecryptedPayrollBalance } from "../lib/fheClient";
+import { getActivePayrollRun, type PayrollPaymentDraft } from "../lib/payrollRunStore";
 import { connectWallet, getActiveWalletAccount, getSavedWalletAccount } from "../lib/walletClient";
 
 const TOKEN_DECIMALS = 6n;
@@ -24,15 +25,28 @@ function getDecryptErrorMessage(error: unknown) {
   if (/no browser wallet|install metamask/i.test(message)) return "Wallet not found.";
   if (/failed to fetch|networkerror|load failed|temporarily disabled|cdn unavailable/i.test(message)) return "Decryption unavailable.";
   if (/missing .*token|missing vite_payroll/i.test(message)) return "Token not configured.";
-  if (/not allowed|ACL|user is not authorized/i.test(message)) return "Balance is not shared with this wallet.";
+  if (/not allowed|ACL|not authorized|unauthorized|persistAllowed|user decrypt/i.test(message)) {
+    return "Balance is not shared with this wallet.";
+  }
   return "Decrypt failed.";
 }
 
+function findRecipientPayment(account: Address | null, payments: PayrollPaymentDraft[]) {
+  if (!account) return null;
+  const normalized = account.toLowerCase();
+  return payments.find((payment) => payment.recipient.toLowerCase() === normalized) || null;
+}
+
 export function PayoutPage() {
+  const run = getActivePayrollRun();
   const [account, setAccount] = useState<Address | null>(null);
   const [decryptedBalance, setDecryptedBalance] = useState<string | null>(null);
   const [status, setStatus] = useState("Connect wallet to view balance.");
   const [busy, setBusy] = useState(false);
+  const recipientPayment = findRecipientPayment(account, run.payments);
+  const hasLoadedRun = run.payments.length > 0;
+  const isRunRecipient = Boolean(recipientPayment);
+  const confirmedRun = run.executionState?.status === "confirmed";
 
   useEffect(() => {
     let active = true;
@@ -42,7 +56,14 @@ export function PayoutPage() {
       if (!active) return;
       const nextAccount = activeWallet || saved;
       setAccount(nextAccount);
-      setStatus(nextAccount ? "Ready." : "Connect wallet to view balance.");
+      const payment = findRecipientPayment(nextAccount, run.payments);
+      setStatus(
+        nextAccount
+          ? hasLoadedRun && !payment
+            ? "Connected wallet is not in this payroll run."
+            : "Ready."
+          : "Connect wallet to view balance."
+      );
     })();
     return () => {
       active = false;
@@ -72,7 +93,8 @@ export function PayoutPage() {
       const wallet = await connectWallet();
       setAccount(wallet);
       setDecryptedBalance(null);
-      setStatus("Ready.");
+      const payment = findRecipientPayment(wallet, run.payments);
+      setStatus(hasLoadedRun && !payment ? "Connected wallet is not in this payroll run." : "Ready.");
     } catch (error) {
       setStatus(getDecryptErrorMessage(error));
     } finally {
@@ -86,6 +108,11 @@ export function PayoutPage() {
     try {
       const wallet = await resolveConnectedWallet();
       if (!wallet) return;
+      const payment = findRecipientPayment(wallet, run.payments);
+      if (hasLoadedRun && !payment) {
+        setStatus("Connected wallet is not in this payroll run.");
+        return;
+      }
 
       setStatus("Confirm signature.");
       const value = await getDecryptedPayrollBalance(wallet);
@@ -98,8 +125,11 @@ export function PayoutPage() {
     }
   };
 
+  const canReveal = !hasLoadedRun || isRunRecipient;
   const actionLabel = !account ? "Connect wallet" : busy ? "Working..." : decryptedBalance ? "Reveal again" : "Reveal balance";
-  const statusLabel = account ? status : "Connect wallet to view balance.";
+  const statusLabel = account
+    ? status
+    : "Connect wallet to view balance.";
   const primaryAction = account ? onDecrypt : onConnect;
   const normalizedStatus = statusLabel.toLowerCase();
   const statusClassName = decryptedBalance
@@ -122,13 +152,21 @@ export function PayoutPage() {
             <strong title={account || undefined}>{formatAddress(account)}</strong>
           </div>
           <div className="detail-row">
+            <span className="detail-label">Recipient</span>
+            <strong>{recipientPayment?.name || (hasLoadedRun ? "Not in loaded run" : "Any token holder")}</strong>
+          </div>
+          <div className="detail-row">
+            <span className="detail-label">Run</span>
+            <strong>{hasLoadedRun ? (confirmedRun ? "Confirmed" : "Not settled") : "No payroll loaded"}</strong>
+          </div>
+          <div className="detail-row">
             <span className="detail-label">Balance</span>
             <strong>{decryptedBalance || "-"}</strong>
           </div>
         </div>
         <div className="cta-row">
           <span className={statusClassName}>{statusLabel}</span>
-          <button className="button" onClick={primaryAction} disabled={busy}>
+          <button className="button" onClick={primaryAction} disabled={busy || (Boolean(account) && !canReveal)}>
             {actionLabel}
           </button>
         </div>

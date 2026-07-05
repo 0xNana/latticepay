@@ -1,7 +1,7 @@
 import { recoverTypedDataAddress, type Address, type Hex } from "viem";
 import { toHex } from "viem";
 import { appConfig } from "./config";
-import { publicClient, walletClient, walletProvider } from "./walletClient";
+import { ensureSepoliaNetwork, publicClient, walletClient, walletProvider } from "./walletClient";
 
 const confidentialTokenAbi = [
   {
@@ -32,7 +32,7 @@ type RelayerInstance = {
     handlePairs: Array<{ handle: Hex; contractAddress: Address }>,
     privateKey: string,
     publicKey: string,
-    signature: Hex,
+    signature: string,
     contractAddresses: string[],
     userAddress: string,
     startTimestamp: number,
@@ -220,10 +220,27 @@ function isZeroHandle(value: Hex) {
   return /^0x0{64}$/i.test(value);
 }
 
+function readDecryptedValue(decrypted: Record<Hex, bigint | boolean | Hex>, handle: Hex) {
+  const direct = decrypted[handle];
+  if (direct !== undefined) return direct;
+
+  const normalizedHandle = handle.toLowerCase();
+  const entry = Object.entries(decrypted).find(([key]) => key.toLowerCase() === normalizedHandle);
+  return entry?.[1];
+}
+
+function getRelayerErrorMessage(error: unknown) {
+  const parts = [error, (error as { cause?: unknown })?.cause]
+    .map((item) => String((item as Error)?.message || item || ""))
+    .filter(Boolean);
+  return parts.join(" | ") || "Unknown relayer error.";
+}
+
 export async function getDecryptedPayrollBalance(address: Address): Promise<bigint> {
   if (!appConfig.payrollToken) throw new Error("Missing VITE_PAYROLL_TOKEN_ADDRESS.");
   const payrollToken = appConfig.payrollToken;
 
+  await ensureSepoliaNetwork();
   const handle = await getConfidentialBalanceHandle(address);
   if (relayerDebug) console.debug("[relayer] confidentialBalanceOf handle", { address, token: payrollToken, handle });
   if (isZeroHandle(handle)) return 0n;
@@ -250,7 +267,7 @@ export async function getDecryptedPayrollBalance(address: Address): Promise<bigi
       [{ handle, contractAddress: payrollToken }],
       keypair.privateKey,
       keypair.publicKey,
-      normalizedSignature as Hex,
+      normalizedSignature,
       [payrollToken],
       address,
       startTimestamp,
@@ -258,11 +275,12 @@ export async function getDecryptedPayrollBalance(address: Address): Promise<bigi
     );
     if (relayerDebug) console.debug("[relayer] userDecrypt success", { address });
   } catch (error) {
-    if (relayerDebug) console.debug("[relayer] userDecrypt failed", { address, error: String((error as Error)?.message || error) });
-    throw new Error(`Balance decryption submission failed: ${String((error as Error)?.message || error)}`);
+    const message = getRelayerErrorMessage(error);
+    if (relayerDebug) console.debug("[relayer] userDecrypt failed", { address, error: message });
+    throw new Error(`Balance decryption submission failed: ${message}`);
   }
 
-  const value = decrypted[handle];
+  const value = readDecryptedValue(decrypted, handle);
   if (typeof value === "bigint") return value;
   if (value === undefined) throw new Error("Relayer returned no decrypted balance for this account.");
   throw new Error("Relayer returned an unexpected decrypted balance type.");
