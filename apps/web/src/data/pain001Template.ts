@@ -24,12 +24,8 @@ export type Pain001SampleFile = {
 
 export const pain001SampleFiles: Pain001SampleFile[] = [
   {
-    label: "Seismic DAO (5)",
-    fileName: "pain001-seismic-labs-llc-05-employees-usd-2026-03.xml"
-  },
-  {
-    label: "FHEVM DAO (10)",
-    fileName: "pain001-fhevm-gmbh-10-employees-usd-2026-03.xml"
+    label: "Lattice Pay DAO (10)",
+    fileName: "pain001-lattice-pay-dao-10-employees-usd-2026-03.xml"
   },
   {
     label: "FHEVM DAO (15)",
