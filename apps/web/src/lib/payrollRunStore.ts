@@ -1,6 +1,6 @@
 import type { Address } from "viem";
 
-const STORAGE_KEY = "cpay_payroll_run";
+const STORAGE_KEY = "latticepay_payroll_run";
 
 export type PayrollPaymentDraft = {
   id: string;

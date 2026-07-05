@@ -60,7 +60,7 @@ export async function executePayrollWithIntent(params: ExecuteParams) {
     payrollExecutor,
     payrollToken,
     paymentCount: params.recipients.length,
-    mode: appConfig.executionMode
+    mode: "wallet_direct"
   });
   log("fhe_payload", {
     payments: params.recipients.length,
@@ -72,92 +72,70 @@ export async function executePayrollWithIntent(params: ExecuteParams) {
   let txHash: Hex;
   let runId: Hex = keccak256(toHex(`${activeAccount}-${Date.now()}`));
   try {
-    if (appConfig.executionMode === "wallet_direct") {
-      await ensureSepoliaNetwork();
-      const nonce = (await publicClient.readContract({
-        address: payrollExecutor,
-        abi: payrollExecutorAbi,
-        functionName: "nonces",
-        args: [activeAccount]
-      })) as bigint;
-      const validUntil = Math.floor(Date.now() / 1000) + 600;
-      runId = keccak256(toHex(`${activeAccount}-${nonce.toString()}-${Date.now()}`));
-      const calldata = encodeFunctionData({
-        abi: payrollExecutorAbi,
-        functionName: "executePayroll",
-        args: [
-          runId,
-          payrollToken,
-          activeAccount,
-          params.recipients,
-          params.encryptedAmounts,
-          params.inputProofs,
-          validUntil,
-          nonce
-        ]
-      });
-      log("aa_payload", {
-        calldataBytes: hexBytes(calldata),
-        recipientCount: params.recipients.length
-      });
+    await ensureSepoliaNetwork();
+    const nonce = (await publicClient.readContract({
+      address: payrollExecutor,
+      abi: payrollExecutorAbi,
+      functionName: "nonces",
+      args: [activeAccount]
+    })) as bigint;
+    const validUntil = Math.floor(Date.now() / 1000) + 600;
+    runId = keccak256(toHex(`${activeAccount}-${nonce.toString()}-${Date.now()}`));
+    const calldata = encodeFunctionData({
+      abi: payrollExecutorAbi,
+      functionName: "executePayroll",
+      args: [
+        runId,
+        payrollToken,
+        activeAccount,
+        params.recipients,
+        params.encryptedAmounts,
+        params.inputProofs,
+        validUntil,
+        nonce
+      ]
+    });
+    log("aa_payload", {
+      calldataBytes: hexBytes(calldata),
+      recipientCount: params.recipients.length
+    });
 
-      log("simulating direct submission...");
-      await publicClient.simulateContract({
-        account: activeAccount,
-        address: payrollExecutor,
-        abi: payrollExecutorAbi,
-        functionName: "executePayroll",
-        args: [
-          runId,
-          payrollToken,
-          activeAccount,
-          params.recipients,
-          params.encryptedAmounts,
-          params.inputProofs,
-          validUntil,
-          nonce
-        ]
-      });
-      log("simulation ok");
-      txHash = await walletClient.writeContract({
-        account: activeAccount,
-        chain: walletClient.chain,
-        address: payrollExecutor,
-        abi: payrollExecutorAbi,
-        functionName: "executePayroll",
-        args: [
-          runId,
-          payrollToken,
-          activeAccount,
-          params.recipients,
-          params.encryptedAmounts,
-          params.inputProofs,
-          validUntil,
-          nonce
-        ]
-      });
-      log("submitted directly via wallet", { txHash, runId });
-    } else {
-      if (!appConfig.executeUrl) throw new Error("Missing execution endpoint. Set VITE_EXECUTE_URL or VITE_API_BASE_URL.");
-      log("submitting to backend observer...");
-      const response = await fetch(appConfig.executeUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          smartAccount: activeAccount,
-          recipients: params.recipients,
-          encryptedAmounts: params.encryptedAmounts,
-          inputProofs: params.inputProofs
-        })
-      });
-      const json = (await response.json().catch(() => ({}))) as { runId?: Hex; txHash?: Hex; error?: string; message?: string };
-      if (!response.ok || !json?.txHash || !json?.runId) {
-        throw new Error(json?.message || json?.error || `Execution endpoint failed (${response.status})`);
-      }
-      txHash = json.txHash;
-      runId = json.runId;
-      log("submitted via backend observer", { txHash, runId });
-    }
+    log("simulating direct submission...");
+    await publicClient.simulateContract({
+      account: activeAccount,
+      address: payrollExecutor,
+      abi: payrollExecutorAbi,
+      functionName: "executePayroll",
+      args: [
+        runId,
+        payrollToken,
+        activeAccount,
+        params.recipients,
+        params.encryptedAmounts,
+        params.inputProofs,
+        validUntil,
+        nonce
+      ]
+    });
+    log("simulation ok");
+    txHash = await walletClient.writeContract({
+      account: activeAccount,
+      chain: walletClient.chain,
+      address: payrollExecutor,
+      abi: payrollExecutorAbi,
+      functionName: "executePayroll",
+      args: [
+        runId,
+        payrollToken,
+        activeAccount,
+        params.recipients,
+        params.encryptedAmounts,
+        params.inputProofs,
+        validUntil,
+        nonce
+      ]
+    });
+    log("submitted directly via wallet", { txHash, runId });
   } catch (error) {
     const err = error as { message?: string; cause?: unknown; details?: unknown };
     console.error("[payroll:execute] submission failed", {
@@ -173,9 +151,6 @@ export async function executePayrollWithIntent(params: ExecuteParams) {
     mocked: false,
     runId,
     txHash,
-    note:
-      appConfig.executionMode === "wallet_direct"
-        ? "Execution submitted directly from connected wallet."
-        : "Execution submitted via observer backend signer."
+    note: "Execution submitted directly from connected wallet."
   };
 }

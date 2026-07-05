@@ -35,7 +35,7 @@ export function buildPain002Xml(run: PayrollRunDraft) {
       <MsgId>${xmlEscape(msgId)}</MsgId>
       <CreDtTm>${created}</CreDtTm>
       <InitgPty>
-        <Nm>${xmlEscape(run.companyName || "cPay")}</Nm>
+        <Nm>${xmlEscape(run.companyName || "Lattice Pay")}</Nm>
       </InitgPty>
     </GrpHdr>
     <OrgnlGrpInfAndSts>

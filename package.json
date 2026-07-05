@@ -1,5 +1,5 @@
 {
-  "name": "cpay",
+  "name": "latticepay",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -10,7 +10,6 @@
     "build": "npm run build:web",
     "build:web": "npm --workspace apps/web run build",
     "dev": "npm --workspace apps/web run dev",
-    "dev:api": "npm --workspace apps/api run dev",
     "contracts:install": "npm --prefix packages/contracts install",
     "contracts:compile": "npm --prefix packages/contracts run compile",
     "contracts:test": "npm --prefix packages/contracts test"

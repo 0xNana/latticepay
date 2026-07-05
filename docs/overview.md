@@ -1,7 +1,7 @@
-# cPay - Confidential Payroll on Zama
+# Lattice Pay - Confidential Payroll on Zama
 
 ## Objective
-cPay is a confidential payroll dApp that lets companies run payroll onchain without exposing individual salary amounts in public transaction data.
+Lattice Pay is a confidential payroll dApp that lets companies run payroll onchain without exposing individual salary amounts in public transaction data.
 
 It uses:
 - Zama FHEVM primitives for encrypted inputs/decryption flows
@@ -15,10 +15,10 @@ It uses:
 - Encrypt each payroll amount client-side through relayer SDK flow.
 - Execute payroll in a single batch via `PayrollExecutor`.
 - Read processing/completion states and download status artifacts.
-- Decrypt confidential balances through observer mode.
+- Decrypt confidential balances with wallet-signed user decrypt.
 
 ## Scope of This Submission
 - Network: Sepolia testnet.
 - Token model: ERC-7984 wrapper over mock underlying stable token.
-- Batch guard: max 100 payments per run (onchain + backend policy).
+- Batch guard: max 100 payments per run onchain.
 - Focus: confidential payroll execution UX with real onchain settlement behavior.

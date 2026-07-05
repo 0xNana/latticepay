@@ -1,4 +1,4 @@
-import { useMemo, useState, type ChangeEvent } from "react";
+import { type ChangeEvent } from "react";
 import { Link } from "react-router-dom";
 import { Section } from "../Cards";
 import { downloadPain001SampleFile, pain001SampleFiles } from "../../data/pain001Template";
@@ -11,99 +11,66 @@ type DashboardHeroSectionProps = {
 
 export function DashboardHeroSection({ hasRun, run }: DashboardHeroSectionProps) {
   return (
-    <section className="landing-hero" aria-labelledby="hero-title">
-      <div className="hero-content">
-        <span className="hero-pill">cPay for DAOs</span>
-        <h1 id="hero-title">Private payroll for onchain teams</h1>
-        <p>Upload payroll. Encrypt amounts. Settle from treasury.</p>
-        <div className="hero-actions">
-          <Link className="button hero-button" to="/payroll/draft">Start payroll</Link>
-          <Link className="button ghost hero-button" to="/runs">View audit</Link>
-        </div>
-        <div className="hero-metrics" aria-label="Payroll summary">
-          <div>
-            <span>Contributors</span>
-            <strong>{hasRun ? run.stats.employees : 0}</strong>
-          </div>
-          <div>
-            <span>Total</span>
-            <strong>{hasRun ? run.stats.totalDisplay : "-"}</strong>
-          </div>
-          <div>
-            <span>Privacy</span>
-            <strong>FHE</strong>
+    <div className="landing-stack">
+      <section className="landing-hero" aria-labelledby="hero-title">
+        <div className="hero-content">
+          <span className="hero-pill">Sepolia workspace</span>
+          <h1 id="hero-title">Confidential payroll</h1>
+          <p>Import payroll files, encrypt amounts, and settle private recipient balances.</p>
+          <div className="hero-actions">
+            <Link className="button hero-button" to="/payroll/draft">Start payroll</Link>
+            <Link className="button ghost hero-button" to="/payout">Open portal</Link>
           </div>
         </div>
-      </div>
-      <div className="hero-visual" aria-label="Encrypted payroll preview">
-        <img className="hero-preview-image" src="/hero-payroll-preview.png" alt="Encrypted payroll dashboard preview" />
-      </div>
-    </section>
-  );
-}
-
-
-export function PayrollSimulatorSection() {
-  const [contributors, setContributors] = useState(24);
-  const [averagePayout, setAveragePayout] = useState(2800);
-  const total = useMemo(() => contributors * averagePayout, [contributors, averagePayout]);
-  const formattedTotal = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0
-  }).format(total);
-
-  return (
-    <section className="payroll-sim" aria-labelledby="sim-title">
-      <div className="sim-copy">
-        <span className="hero-pill">Live preview</span>
-        <h2 id="sim-title">Model a private run</h2>
-      </div>
-      <div className="sim-panel">
-        <div className="sim-controls">
-          <label>
-            <span>Contributors</span>
-            <strong>{contributors}</strong>
-            <input
-              type="range"
-              min="4"
-              max="120"
-              value={contributors}
-              onChange={(event) => setContributors(Number(event.target.value))}
-            />
-          </label>
-          <label>
-            <span>Avg payout</span>
-            <strong>{new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(averagePayout)}</strong>
-            <input
-              type="range"
-              min="500"
-              max="12000"
-              step="100"
-              value={averagePayout}
-              onChange={(event) => setAveragePayout(Number(event.target.value))}
-            />
-          </label>
-        </div>
-        <div className="sim-output">
-          <div>
-            <span>Operator total</span>
-            <strong>{formattedTotal}</strong>
+        <div className="hero-status-panel" aria-label="Payroll status">
+          <div className="hero-status-head">
+            <span>Run state</span>
+            <strong>{hasRun ? "Ready" : "Idle"}</strong>
           </div>
-          <div>
-            <span>Public amount</span>
-            <strong>****** cUSDC</strong>
+          <div className="hero-metrics" aria-label="Payroll summary">
+            <div>
+              <span>Recipients</span>
+              <strong>{hasRun ? run.stats.employees : 0}</strong>
+            </div>
+            <div>
+              <span>Total</span>
+              <strong>{hasRun ? run.stats.totalDisplay : "-"}</strong>
+            </div>
+            <div>
+              <span>Privacy</span>
+              <strong>FHE</strong>
+            </div>
           </div>
-          <div className="settlement-rail" aria-hidden="true">
-            <span>Treasury</span>
-            <i />
-            <span>Encrypted</span>
-            <i />
-            <span>Paid</span>
+          <div className="hero-status-list" aria-label="Payroll workflow">
+            <div><span>Import</span><strong>pain.001</strong></div>
+            <div><span>Encrypt</span><strong>Amounts</strong></div>
+            <div><span>Settle</span><strong>Receipt</strong></div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
+      <section className="landing-product-grid" aria-label="Lattice Pay capabilities">
+        <article className="landing-product-card">
+          <div className="landing-card-media landing-card-media-private" aria-hidden="true" />
+          <h3>Private payroll runs</h3>
+          <p>Salary amounts stay encrypted from draft review through settlement.</p>
+        </article>
+        <article className="landing-product-card">
+          <div className="landing-card-media landing-card-media-files" aria-hidden="true" />
+          <h3>Bank file native</h3>
+          <p>Import pain.001 payroll files and keep receipt records for every run.</p>
+        </article>
+        <article className="landing-product-card">
+          <div className="landing-card-media landing-card-media-recipient" aria-hidden="true" />
+          <h3>Recipient-controlled reveal</h3>
+          <p>Workers reveal only their own confidential balance from the portal.</p>
+        </article>
+        <article className="landing-product-card">
+          <div className="landing-card-media landing-card-media-settle" aria-hidden="true" />
+          <h3>Encrypted settlement</h3>
+          <p>Confidential token transfers preserve privacy while producing an audit trail.</p>
+        </article>
+      </section>
+    </div>
   );
 }
 
@@ -153,116 +120,5 @@ export function RunPayrollSection({ busy, uploadError, onUpload }: RunPayrollSec
       </div>
       {uploadError ? <p className="error-text">{uploadError}</p> : null}
     </Section>
-  );
-}
-
-type BatchPreviewSectionProps = {
-  hasRun: boolean;
-  run: PayrollRunDraft;
-};
-
-export function BatchPreviewSection(_props: BatchPreviewSectionProps) {
-  const workflows = [
-    {
-      eyebrow: "DAO",
-      title: "Payroll intake",
-      detail: "Import pain.001, review recipients, lock totals."
-    },
-    {
-      eyebrow: "Private",
-      title: "Encrypted amounts",
-      detail: "Seal salary values before they touch the chain."
-    },
-    {
-      eyebrow: "Treasury",
-      title: "Settlement record",
-      detail: "Batch payout with audit trail and pain.002 receipt."
-    }
-  ];
-
-  return (
-    <section className="pro-flow-section" aria-labelledby="product-flow-title">
-      <div className="pro-flow-hero">
-        <div className="pro-flow-visual" aria-label="Private payroll flow preview">
-          <div className="pro-window-head">
-            <div className="pro-product-mark pro-product-mark-dark">
-              <span aria-hidden="true">cP</span>
-              <strong id="product-flow-title">cPay Flow</strong>
-            </div>
-          </div>
-          <div className="pro-workflow-head">
-            <h3>Every payroll strategy, one private flow.</h3>
-          </div>
-          <div className="pro-window-rail" aria-hidden="true">
-            <span />
-            <i />
-            <span />
-            <i />
-            <span />
-          </div>
-          <div className="pro-window-list">
-            <div><span>Import</span><strong>pain.001 XML</strong></div>
-            <div><span>Encrypt</span><strong>****** cUSDC</strong></div>
-            <div><span>Settle</span><strong>pain.002 receipt</strong></div>
-          </div>
-          <div className="pro-workflow-grid">
-            {workflows.map((workflow) => (
-              <article className="pro-workflow-card" key={workflow.title}>
-                <span>{workflow.eyebrow}</span>
-                <h4>{workflow.title}</h4>
-                <p>{workflow.detail}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-type PayrollNetworkFooterSectionProps = {
-  systemStatus: string;
-  systemStatusTone: "good" | "warn";
-};
-
-export function PayrollNetworkFooterSection({
-  systemStatus,
-  systemStatusTone
-}: PayrollNetworkFooterSectionProps) {
-  const statusClassName = systemStatusTone === "good" ? "status-text status-text-good" : "status-text status-text-warn";
-
-  return (
-    <footer className="site-footer">
-      <div className="footer-brand-row">
-        <div>
-          <strong>cPay</strong>
-          <span>Private payroll for DAOs.</span>
-        </div>
-      </div>
-      <div className="footer-grid">
-        <div className="footer-col">
-          <span>Product</span>
-          <Link to="/payroll/draft">Payroll</Link>
-          <Link to="/runs">Audit</Link>
-          <Link to="/payout">Portal</Link>
-        </div>
-        <div className="footer-col">
-          <span>Files</span>
-          <button type="button" onClick={() => downloadPain001SampleFile(pain001SampleFiles[0].fileName)}>pain.001 sample</button>
-          <Link to="/payroll/completed">pain.002 receipt</Link>
-          <span className="footer-muted">ISO 20022</span>
-        </div>
-        <div className="footer-col">
-          <span>Security</span>
-          <span className="footer-muted">FHE active</span>
-          <span className="footer-muted">Multisig policy</span>
-          <span className={statusClassName}>{systemStatus}</span>
-        </div>
-      </div>
-      <div className="footer-bottom">
-        <span>cPay Labs</span>
-        <span>(c) 2026</span>
-      </div>
-    </footer>
   );
 }

@@ -12,7 +12,7 @@ export type PayrollIntent = {
 export function getPayrollIntentTypedData(chainId: number, verifyingContract: Address, message: PayrollIntent) {
   return {
     domain: {
-      name: "cPay Payroll",
+      name: "Lattice Pay Payroll",
       version: "1",
       chainId,
       verifyingContract

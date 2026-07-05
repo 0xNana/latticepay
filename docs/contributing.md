@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for your interest in contributing to cPay.
+Thanks for your interest in contributing to Lattice Pay.
 
 ## Scope
 - This repository contains web, API, and contracts packages.
@@ -10,7 +10,6 @@ Thanks for your interest in contributing to cPay.
 ```bash
 npm install
 npm --workspace apps/web run dev
-npm --workspace apps/api run dev
 ```
 
 ## Quality Checks

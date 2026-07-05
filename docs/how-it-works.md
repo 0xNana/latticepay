@@ -6,7 +6,7 @@
 
 ## 2. Fund
 - User opens Faucet panel and requests test payroll tokens.
-- Backend faucet mints underlying token, approves wrapper, wraps into confidential token for the target account.
+- Connected wallet mints test underlying token, approves the wrapper, and wraps into confidential token for itself.
 
 ## 3. Upload & Validate
 - User uploads a `pain.001` file.
@@ -28,8 +28,7 @@
 
 ## 6. Execute Payroll
 - `executePayroll(runId, token, from, recipients, encryptedAmounts, inputProofs, validUntil, nonce)` is submitted.
-- In `wallet_direct`, the connected wallet submits the payroll transaction.
-- In backend mode, the server-side observer signer can submit after operator precheck.
+- Connected wallet submits the payroll transaction.
 - Note for MVP: larger payroll batches carry encrypted handle + input proof payloads. Current operational cap is 15 payments per run.
 
 ## 7. Confirm & Report
@@ -38,5 +37,5 @@
 - `pain.002` report generation/summary path is available from completed runs.
 
 ## 8. Decrypt Balance
-- User can enable observer and request decrypt from UI.
-- Backend decrypt endpoint signs relayer EIP-712 payload using observer signer and returns decrypted balance.
+- User requests decrypt from the connected wallet.
+- Browser relayer flow asks the wallet for an EIP-712 user-decrypt signature and returns the user balance.

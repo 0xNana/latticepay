@@ -19,7 +19,7 @@ declare global {
   }
 }
 
-const WALLET_SESSION_KEY = "cpay_wallet_account";
+const WALLET_SESSION_KEY = "latticepay_wallet_account";
 const SEPOLIA_CHAIN_ID_HEX = `0x${sepolia.id.toString(16)}`;
 
 function getBrowserWallet(): BrowserWalletProvider {
@@ -49,26 +49,6 @@ export const publicClient = createPublicClient({
   chain: sepolia,
   transport: http(appConfig.rpcUrl)
 });
-
-const observerAbi = [
-  {
-    type: "function",
-    name: "observer",
-    stateMutability: "view",
-    inputs: [{ name: "account", type: "address" }],
-    outputs: [{ name: "", type: "address" }]
-  },
-  {
-    type: "function",
-    name: "setObserver",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "account", type: "address" },
-      { name: "newObserver", type: "address" }
-    ],
-    outputs: []
-  }
-] as const;
 
 const operatorAbi = [
   {
@@ -129,6 +109,14 @@ const wrapperAbi = [
   }
 ] as const;
 
+export type FaucetClaimStep =
+  | { type: "mint-submitted"; txHash: `0x${string}` }
+  | { type: "mint-confirmed"; txHash: `0x${string}` }
+  | { type: "approve-submitted"; txHash: `0x${string}` }
+  | { type: "approve-confirmed"; txHash: `0x${string}` }
+  | { type: "wrap-submitted"; txHash: `0x${string}` }
+  | { type: "wrap-confirmed"; txHash: `0x${string}` };
+
 function asWalletAddress(value: unknown): Address | null {
   if (typeof value !== "string" || !/^0x[a-fA-F0-9]{40}$/.test(value)) return null;
   return value as Address;
@@ -179,11 +167,13 @@ export async function connectWallet() {
   return address;
 }
 
-export const loginUser = connectWallet;
-
 export async function getActiveWalletAccount(): Promise<Address | null> {
-  const accounts = await walletProvider.request({ method: "eth_accounts" }).catch(() => []);
-  return firstWalletAddress(accounts);
+  try {
+    const accounts = await walletProvider.request({ method: "eth_accounts" });
+    return firstWalletAddress(accounts);
+  } catch {
+    return null;
+  }
 }
 
 export function getSavedWalletAccount(): Address | null {
@@ -202,34 +192,20 @@ export function saveWalletAccount(address: Address | null) {
   } catch {}
 }
 
-async function claimViaBackend(address: Address, amount: string) {
-  const faucetUrl = appConfig.faucetUrl;
-  if (!faucetUrl) {
-    throw new Error("Missing faucet endpoint. Set VITE_FAUCET_URL or VITE_API_BASE_URL.");
-  }
-
-  const response = await fetch(faucetUrl, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ address, amount })
-  });
-  if (!response.ok) {
-    let message = "Faucet claim failed.";
-    try {
-      const payload = (await response.json()) as { error?: string; message?: string };
-      message = payload.message || payload.error || message;
-    } catch {}
-    throw new Error(message);
-  }
-  const payload = (await response.json()) as { txHash?: string };
-  if (!payload.txHash) throw new Error("Faucet claim submitted but no transaction hash returned.");
-  return payload.txHash as `0x${string}`;
-}
-
-async function claimViaWalletDirect(address: Address, amount: bigint) {
+async function claimViaWalletDirect(
+  address: Address,
+  amount: bigint,
+  onStep?: (step: FaucetClaimStep) => void
+) {
   if (!appConfig.payrollUnderlying) throw new Error("Missing VITE_PAYROLL_UNDERLYING_ADDRESS.");
   if (!appConfig.payrollToken) throw new Error("Missing VITE_PAYROLL_TOKEN_ADDRESS.");
   await ensureSepoliaNetwork();
+
+  const activeAccount = await getActiveWalletAccount();
+  if (!activeAccount) throw new Error("No active wallet account. Please reconnect your wallet.");
+  if (activeAccount.toLowerCase() !== address.toLowerCase()) {
+    throw new Error(`Account mismatch. Active wallet is ${activeAccount}, but faucet target is ${address}.`);
+  }
 
   const mintTx = await walletClient.writeContract({
     address: appConfig.payrollUnderlying,
@@ -239,7 +215,9 @@ async function claimViaWalletDirect(address: Address, amount: bigint) {
     chain: sepolia,
     account: address
   });
+  onStep?.({ type: "mint-submitted", txHash: mintTx });
   await waitForTxConfirmation(mintTx);
+  onStep?.({ type: "mint-confirmed", txHash: mintTx });
 
   const approveTx = await walletClient.writeContract({
     address: appConfig.payrollUnderlying,
@@ -249,9 +227,11 @@ async function claimViaWalletDirect(address: Address, amount: bigint) {
     chain: sepolia,
     account: address
   });
+  onStep?.({ type: "approve-submitted", txHash: approveTx });
   await waitForTxConfirmation(approveTx);
+  onStep?.({ type: "approve-confirmed", txHash: approveTx });
 
-  return walletClient.writeContract({
+  const wrapTx = await walletClient.writeContract({
     address: appConfig.payrollToken,
     abi: wrapperAbi,
     functionName: "wrap",
@@ -259,44 +239,19 @@ async function claimViaWalletDirect(address: Address, amount: bigint) {
     chain: sepolia,
     account: address
   });
+  onStep?.({ type: "wrap-submitted", txHash: wrapTx });
+  await waitForTxConfirmation(wrapTx);
+  onStep?.({ type: "wrap-confirmed", txHash: wrapTx });
+
+  return { mintTx, approveTx, wrapTx };
 }
 
-const sleep = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
-
-export async function claimPayrollTokens(address: Address, amount = "1000000") {
-  const amountRaw = BigInt(amount);
-  if (appConfig.faucetMode === "backend") {
-    return claimViaBackend(address, amount);
-  }
-  if (appConfig.faucetMode === "wallet_direct") {
-    return claimViaWalletDirect(address, amountRaw);
-  }
-
-  try {
-    return await claimViaWalletDirect(address, amountRaw);
-  } catch (directError) {
-    const message = String((directError as Error)?.message || directError);
-    const invalidNonce = /invalid nonce|invalid transaction nonce/i.test(message);
-    if (invalidNonce) {
-      await sleep(1200);
-      try {
-        return await claimViaWalletDirect(address, amountRaw);
-      } catch (retryError) {
-        if (appConfig.walletDebug) {
-          console.debug("[faucet] wallet direct retry failed, fallback backend", {
-            error: String((retryError as Error)?.message || retryError)
-          });
-        }
-        return claimViaBackend(address, amount);
-      }
-    }
-    if (appConfig.walletDebug) {
-      console.debug("[faucet] wallet direct failed, fallback backend", {
-        error: message
-      });
-    }
-    return claimViaBackend(address, amount);
-  }
+export async function claimPayrollTokens(
+  address: Address,
+  amount = "1000000",
+  onStep?: (step: FaucetClaimStep) => void
+) {
+  return claimViaWalletDirect(address, BigInt(amount), onStep);
 }
 
 export async function waitForTxConfirmation(txHash: `0x${string}`) {
@@ -304,29 +259,6 @@ export async function waitForTxConfirmation(txHash: `0x${string}`) {
     hash: txHash,
     confirmations: 1
   });
-}
-
-export async function setTokenObserver(account: Address, observer: Address) {
-  if (!appConfig.payrollToken) throw new Error("Missing VITE_PAYROLL_TOKEN_ADDRESS.");
-  await ensureSepoliaNetwork();
-  return walletClient.writeContract({
-    address: appConfig.payrollToken,
-    abi: observerAbi,
-    functionName: "setObserver",
-    args: [account, observer],
-    chain: sepolia,
-    account
-  });
-}
-
-export async function getTokenObserver(account: Address): Promise<Address> {
-  if (!appConfig.payrollToken) throw new Error("Missing VITE_PAYROLL_TOKEN_ADDRESS.");
-  return publicClient.readContract({
-    address: appConfig.payrollToken,
-    abi: observerAbi,
-    functionName: "observer",
-    args: [account]
-  }) as Promise<Address>;
 }
 
 export async function isExecutorOperator(account: Address, executor: Address): Promise<boolean> {

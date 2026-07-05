@@ -189,7 +189,7 @@ export function downloadKnownAddressesPain001Template() {
   URL.revokeObjectURL(url);
 }
 
-export function downloadPain001Template(xml: string, fileName = "cpay-payroll.pain.001.xml") {
+export function downloadPain001Template(xml: string, fileName = "latticepay-payroll.pain.001.xml") {
   const blob = new Blob([xml], { type: "application/xml;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");

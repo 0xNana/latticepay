@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import type { Address } from "viem";
 import { Section } from "../components/Cards";
-import { appConfig } from "../lib/config";
 import { getDecryptedPayrollBalance } from "../lib/fheClient";
-import { getSavedWalletAccount, getTokenObserver, setTokenObserver, waitForTxConfirmation } from "../lib/walletClient";
+import { connectWallet, getActiveWalletAccount, getSavedWalletAccount } from "../lib/walletClient";
 
 const TOKEN_DECIMALS = 6n;
 
@@ -14,103 +13,124 @@ function formatUsd(raw: bigint) {
   return `$${Number(whole).toLocaleString()}.${frac}`;
 }
 
+function formatAddress(address: Address | null) {
+  if (!address) return "Not connected";
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
+function getDecryptErrorMessage(error: unknown) {
+  const message = String((error as Error)?.message || error);
+  if (/user rejected|rejected|denied|4001/i.test(message)) return "Request cancelled.";
+  if (/no browser wallet|install metamask/i.test(message)) return "Wallet not found.";
+  if (/failed to fetch|networkerror|load failed|temporarily disabled|cdn unavailable/i.test(message)) return "Decryption unavailable.";
+  if (/missing .*token|missing vite_payroll/i.test(message)) return "Token not configured.";
+  if (/not allowed|ACL|user is not authorized/i.test(message)) return "Balance is not shared with this wallet.";
+  return "Decrypt failed.";
+}
+
 export function PayoutPage() {
   const [account, setAccount] = useState<Address | null>(null);
-  const [observerEnabled, setObserverEnabled] = useState(false);
   const [decryptedBalance, setDecryptedBalance] = useState<string | null>(null);
-  const [status, setStatus] = useState<string>("Idle");
+  const [status, setStatus] = useState("Connect wallet to view balance.");
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    const saved = getSavedWalletAccount();
-    if (saved) setAccount(saved);
-  }, []);
 
   useEffect(() => {
     let active = true;
     (async () => {
-      if (!account) {
-        if (active) setObserverEnabled(false);
-        return;
-      }
-      try {
-        const observer = await getTokenObserver(account);
-        if (!active) return;
-        if (!appConfig.observerAddress) {
-          setObserverEnabled(observer !== "0x0000000000000000000000000000000000000000");
-        } else {
-          setObserverEnabled(observer.toLowerCase() === appConfig.observerAddress.toLowerCase());
-        }
-      } catch {
-        if (active) setObserverEnabled(false);
-      }
+      const activeWallet = await getActiveWalletAccount();
+      const saved = getSavedWalletAccount();
+      if (!active) return;
+      const nextAccount = activeWallet || saved;
+      setAccount(nextAccount);
+      setStatus(nextAccount ? "Ready." : "Connect wallet to view balance.");
     })();
     return () => {
       active = false;
     };
-  }, [account]);
+  }, []);
 
-  const onDecrypt = async () => {
-    if (!account) {
-      setStatus("No wallet session found. Log in first.");
-      return;
+  const resolveConnectedWallet = async () => {
+    const activeWallet = await getActiveWalletAccount();
+    if (!activeWallet) {
+      setAccount(null);
+      setDecryptedBalance(null);
+      setStatus("Connect wallet to view balance.");
+      return null;
     }
-    if (!appConfig.observerAddress) {
-      setStatus("Missing observer configuration.");
-      return;
+
+    if (!account || activeWallet.toLowerCase() !== account.toLowerCase()) {
+      setAccount(activeWallet);
+      setDecryptedBalance(null);
     }
+
+    return activeWallet;
+  };
+
+  const onConnect = async () => {
     setBusy(true);
-    setStatus(observerEnabled ? "Decrypting balance..." : "Enabling decrypt access...");
     try {
-      if (!observerEnabled) {
-        const txHash = await setTokenObserver(account, appConfig.observerAddress);
-        await waitForTxConfirmation(txHash);
-        setObserverEnabled(true);
-      }
-      const value = await getDecryptedPayrollBalance(account);
-      if (value === null) {
-        setDecryptedBalance("$0.00");
-        setStatus("Decryption complete.");
-      } else {
-        setDecryptedBalance(formatUsd(value));
-        setStatus("Decryption complete.");
-      }
+      const wallet = await connectWallet();
+      setAccount(wallet);
+      setDecryptedBalance(null);
+      setStatus("Ready.");
     } catch (error) {
-      setStatus(`Decrypt failed: ${(error as Error).message}`);
+      setStatus(getDecryptErrorMessage(error));
     } finally {
       setBusy(false);
     }
   };
 
+  const onDecrypt = async () => {
+    setBusy(true);
+    setDecryptedBalance(null);
+    try {
+      const wallet = await resolveConnectedWallet();
+      if (!wallet) return;
+
+      setStatus("Confirm signature.");
+      const value = await getDecryptedPayrollBalance(wallet);
+      setDecryptedBalance(formatUsd(value));
+      setStatus("Balance revealed.");
+    } catch (error) {
+      setStatus(getDecryptErrorMessage(error));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const actionLabel = !account ? "Connect wallet" : busy ? "Working..." : decryptedBalance ? "Reveal again" : "Reveal balance";
+  const statusLabel = account ? status : "Connect wallet to view balance.";
+  const primaryAction = account ? onDecrypt : onConnect;
+  const normalizedStatus = statusLabel.toLowerCase();
+  const statusClassName = decryptedBalance
+    ? "status-text status-text-good"
+    : normalizedStatus.includes("failed") ||
+        normalizedStatus.includes("unavailable") ||
+        normalizedStatus.includes("cancelled") ||
+        normalizedStatus.includes("not configured") ||
+        normalizedStatus.includes("not found")
+      ? "status-text status-text-warn"
+      : "status-text";
+
   return (
-    <Section title="Portal" subtitle="Decrypt recipient balance.">
-      <div className="grid-2">
-        <div className="card">
-          <h3 style={{ marginTop: 0 }}>Balance</h3>
-          <p><strong>Wallet:</strong> {account || "Not connected"}</p>
-          <p><strong>Encrypted balance:</strong> *****</p>
-          <p><strong>Decrypted balance:</strong> {decryptedBalance || "-"}</p>
-          {decryptedBalance ? <p><strong>Session:</strong> Decrypted for this session</p> : null}
-          <div className="cta-row">
-            <span>{status}</span>
-            <button className="button" onClick={onDecrypt} disabled={busy || !account}>
-              {busy ? "Working..." : "Decrypt"}
-            </button>
+    <Section title="Recipient portal">
+      <div className="card portal-balance-card">
+        <h3>Confidential balance</h3>
+        <div className="detail-list">
+          <div className="detail-row">
+            <span className="detail-label">Wallet</span>
+            <strong title={account || undefined}>{formatAddress(account)}</strong>
+          </div>
+          <div className="detail-row">
+            <span className="detail-label">Balance</span>
+            <strong>{decryptedBalance || "-"}</strong>
           </div>
         </div>
-        <div className="card">
-          <h3 style={{ marginTop: 0 }}>Decrypt</h3>
-          <ul className="list compact-list">
-            <li>Wallet verified</li>
-            <li>Hidden until approval</li>
-            <li>Connected wallet only</li>
-          </ul>
-          {decryptedBalance ? (
-            <div className="success-panel">
-              <p style={{ margin: 0, fontWeight: 700 }}>Decrypted</p>
-              <p style={{ margin: "6px 0 0" }}>Amount received: {decryptedBalance}</p>
-            </div>
-          ) : null}
+        <div className="cta-row">
+          <span className={statusClassName}>{statusLabel}</span>
+          <button className="button" onClick={primaryAction} disabled={busy}>
+            {actionLabel}
+          </button>
         </div>
       </div>
     </Section>

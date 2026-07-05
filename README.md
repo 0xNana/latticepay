@@ -1,19 +1,18 @@
-# cPay — Confidential Payroll
+# Lattice Pay — Confidential Payroll
 
-cPay is a confidential onchain payroll app built with Zama FHEVM, ERC-7984, and standard browser wallets.
+Lattice Pay is a confidential onchain payroll app built with Zama FHEVM, ERC-7984, and standard browser wallets.
 
 It supports a practical payroll workflow:
 - ingest ISO 20022 `pain.001`
 - execute confidential payroll onchain
 - export `pain.002` status receipts
 
-## Why cPay
+## Why Lattice Pay
 - Payroll data should not be publicly readable onchain.
-- cPay keeps salary amounts confidential while preserving settlement and audit trails.
+- Lattice Pay keeps salary amounts confidential while preserving settlement and audit trails.
 
 ## Monorepo Structure
 - `apps/web` — frontend (Vite + React)
-- `apps/api` — backend API (faucet, decrypt, execute, health)
 - `packages/contracts` — Solidity contracts and tests
 - `docs` — public docs
 
@@ -21,11 +20,9 @@ It supports a practical payroll workflow:
 ```bash
 npm install
 npm --workspace apps/web run dev
-npm --workspace apps/api run dev
 ```
 
-Frontend runs on `5173` by default.  
-API runs on `8787` by default.
+Frontend runs on `5173` by default.
 
 ## Build & Test
 ```bash
@@ -49,23 +46,16 @@ npm run contracts:test
 - Decrypt confidential balances from the connected account.
 
 ## Runtime Modes (MVP)
-- Execution: `backend` by default, `wallet_direct` for connected-wallet submission
-- Decrypt: `observer`
-- Faucet: `backend`
-
-Configured via frontend env vars:
-- `VITE_EXECUTION_MODE`
-- `VITE_DECRYPT_MODE`
-- `VITE_FAUCET_MODE`
+- Execution: connected wallet direct
+- Faucet: connected wallet direct
 
 ## Current MVP Constraints
 - Operational batch limit: **15 payments/run** (current stable range: 5/10/15).
 - Contract-level hard cap remains `MAX_BATCH_SIZE = 100`.
-- Decryption currently uses observer mode for stability.
+- Decryption uses wallet-signed user decrypt in the browser.
 
 ## Deployment
 - Web target: Vercel
-- API target: Fly.io
 - Deployment runbook: `docs/deployment.md`
 
 ## Public Documentation
@@ -75,6 +65,9 @@ Configured via frontend env vars:
 - `docs/deployment.md`
 - `docs/limitations.md`
 - `docs/contributing.md`
+
+## Submission Materials
+- `internal-docs/submission.md`
 
 ## License
 - Root project: ISC (see root `package.json`)

@@ -13,16 +13,6 @@ const confidentialTokenAbi = [
   }
 ] as const;
 
-const mockFaucetAbi = [
-  {
-    type: "function",
-    name: "faucetBalances",
-    stateMutability: "view",
-    inputs: [{ name: "account", type: "address" }],
-    outputs: [{ name: "", type: "uint256" }]
-  }
-] as const;
-
 type RelayerInstance = {
   createEncryptedInput: (
     contractAddress: Address,
@@ -101,6 +91,7 @@ async function loadRelayerSdkFromCdn() {
       script.src = appConfig.relayerSdkCdn;
       script.async = true;
       script.type = "text/javascript";
+      script.crossOrigin = "anonymous";
       script.dataset.relayerSdk = "true";
       script.onload = () => resolve();
       script.onerror = () => reject(new Error("Failed to load relayer SDK from CDN."));
@@ -225,122 +216,56 @@ async function getConfidentialBalanceHandle(address: Address): Promise<Hex> {
   }) as Promise<Hex>;
 }
 
-async function getMockFaucetBalance(address: Address): Promise<bigint | null> {
-  if (!appConfig.payrollToken) return null;
-  try {
-    const value = await publicClient.readContract({
-      address: appConfig.payrollToken,
-      abi: mockFaucetAbi,
-      functionName: "faucetBalances",
-      args: [address]
-    });
-    return value as bigint;
-  } catch {
-    return null;
-  }
-}
-
 function isZeroHandle(value: Hex) {
   return /^0x0{64}$/i.test(value);
 }
 
-export async function getDecryptedPayrollBalance(address: Address): Promise<bigint | null> {
+export async function getDecryptedPayrollBalance(address: Address): Promise<bigint> {
   if (!appConfig.payrollToken) throw new Error("Missing VITE_PAYROLL_TOKEN_ADDRESS.");
   const payrollToken = appConfig.payrollToken;
-  const backendDecrypt = async (): Promise<bigint | null> => {
-    if (!appConfig.decryptUrl) throw new Error("Missing decrypt endpoint URL.");
-    const response = await fetch(appConfig.decryptUrl, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ address })
-    });
-    if (response.ok) {
-      const payload = (await response.json()) as { balance?: string };
-      if (payload.balance !== undefined) return BigInt(payload.balance);
-      return null;
-    }
-    let message = "Observer decrypt endpoint failed.";
-    try {
-      const payload = (await response.json()) as { error?: string; message?: string };
-      message = payload.message || payload.error || message;
-    } catch {}
-    throw new Error(message);
-  };
 
-  const clientDecrypt = async (): Promise<bigint | null> => {
-    if (!(await checkRelayerCdnHealth())) {
-      throw new Error("Relayer CDN unavailable. Decryption is temporarily disabled.");
-    }
+  const handle = await getConfidentialBalanceHandle(address);
+  if (relayerDebug) console.debug("[relayer] confidentialBalanceOf handle", { address, token: payrollToken, handle });
+  if (isZeroHandle(handle)) return 0n;
 
-    const instance = await getRelayerInstance();
-    const handle = await getConfidentialBalanceHandle(address);
-    if (relayerDebug) console.debug("[relayer] confidentialBalanceOf handle", { address, token: payrollToken, handle });
-    if (isZeroHandle(handle)) {
-      if (relayerDebug) console.debug("[relayer] zero handle detected, using mock fallback");
-      return getMockFaucetBalance(address);
-    }
-    const keypair = instance.generateKeypair();
-    const startTimestamp = Math.floor(Date.now() / 1000);
-    const durationDays = 1;
-
-    const eip712 = instance.createEIP712(keypair.publicKey, [payrollToken], startTimestamp, durationDays);
-    if (relayerDebug) {
-      console.debug("[relayer] eip712 created", {
-        address,
-        startTimestamp,
-        durationDays,
-        primaryType: eip712.primaryType
-      });
-    }
-    const signature = await signUserDecryptTypedData(address, eip712);
-    const normalizedSignature = signature.startsWith("0x") ? signature.slice(2) : signature;
-    if (relayerDebug) console.debug("[relayer] typed data signed", { address });
-
-    let decrypted: Record<Hex, bigint | boolean | Hex>;
-    try {
-      if (relayerDebug) console.debug("[relayer] userDecrypt submit", { address });
-      decrypted = await instance.userDecrypt(
-        [{ handle, contractAddress: payrollToken }],
-        keypair.privateKey,
-        keypair.publicKey,
-        normalizedSignature as Hex,
-        [payrollToken],
-        address,
-        startTimestamp,
-        durationDays
-      );
-      if (relayerDebug) console.debug("[relayer] userDecrypt success", { address });
-    } catch (error) {
-      if (relayerDebug) console.debug("[relayer] userDecrypt failed", { address, error: String((error as Error)?.message || error) });
-      const fallback = await getMockFaucetBalance(address);
-      if (fallback !== null) return fallback;
-      throw new Error(`Balance decryption submission failed: ${String((error as Error)?.message || error)}`);
-    }
-
-    const value = decrypted[handle];
-    if (typeof value === "bigint") return value;
-    return null;
-  };
-
-  const mode = appConfig.decryptMode;
-  if (relayerDebug) console.debug("[relayer] decrypt mode", { mode });
-
-  if (mode === "observer") return backendDecrypt();
-  if (mode === "client") return clientDecrypt();
-
-  try {
-    return await clientDecrypt();
-  } catch (clientError) {
-    if (relayerDebug) console.debug("[relayer] client decrypt failed, fallback observer", { error: String((clientError as Error)?.message || clientError) });
-    if (!appConfig.decryptUrl) throw clientError;
-    try {
-      return await backendDecrypt();
-    } catch (backendError) {
-      throw new Error(
-        `Decrypt failed (client + observer). client=${String((clientError as Error)?.message || clientError)} observer=${String((backendError as Error)?.message || backendError)}`
-      );
-    }
+  if (!(await checkRelayerCdnHealth())) {
+    throw new Error("Relayer CDN unavailable. Decryption is temporarily disabled.");
   }
+
+  const instance = await getRelayerInstance();
+  const keypair = instance.generateKeypair();
+  const startTimestamp = Math.floor(Date.now() / 1000);
+  const durationDays = 1;
+  const eip712 = instance.createEIP712(keypair.publicKey, [payrollToken], startTimestamp, durationDays);
+  if (relayerDebug) console.debug("[relayer] eip712 created", { address, startTimestamp, durationDays, primaryType: eip712.primaryType });
+
+  const signature = await signUserDecryptTypedData(address, eip712);
+  const normalizedSignature = signature.startsWith("0x") ? signature.slice(2) : signature;
+  if (relayerDebug) console.debug("[relayer] typed data signed", { address });
+
+  let decrypted: Record<Hex, bigint | boolean | Hex>;
+  try {
+    if (relayerDebug) console.debug("[relayer] userDecrypt submit", { address });
+    decrypted = await instance.userDecrypt(
+      [{ handle, contractAddress: payrollToken }],
+      keypair.privateKey,
+      keypair.publicKey,
+      normalizedSignature as Hex,
+      [payrollToken],
+      address,
+      startTimestamp,
+      durationDays
+    );
+    if (relayerDebug) console.debug("[relayer] userDecrypt success", { address });
+  } catch (error) {
+    if (relayerDebug) console.debug("[relayer] userDecrypt failed", { address, error: String((error as Error)?.message || error) });
+    throw new Error(`Balance decryption submission failed: ${String((error as Error)?.message || error)}`);
+  }
+
+  const value = decrypted[handle];
+  if (typeof value === "bigint") return value;
+  if (value === undefined) throw new Error("Relayer returned no decrypted balance for this account.");
+  throw new Error("Relayer returned an unexpected decrypted balance type.");
 }
 
 export async function encryptPayrollAmounts(

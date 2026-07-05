@@ -1,6 +1,6 @@
-# cPay Contracts (FHEVM Hardhat)
+# Lattice Pay Contracts (FHEVM Hardhat)
 
-A Hardhat-based contracts package for cPay confidential payroll, using Zama FHEVM and OpenZeppelin ERC-7984.
+A Hardhat-based contracts package for Lattice Pay confidential payroll, using Zama FHEVM and OpenZeppelin ERC-7984.
 
 ## Quick Start
 
