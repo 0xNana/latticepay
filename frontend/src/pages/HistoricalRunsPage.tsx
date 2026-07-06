@@ -1,10 +1,10 @@
 import { Link } from "react-router-dom";
 import { Section } from "../components/Cards";
 import { Table } from "../components/Table";
-import { getActivePayrollRun } from "../lib/payrollRunStore";
+import { getAuditPayrollRun } from "../lib/payrollRunStore";
 
 export function HistoricalRunsPage() {
-  const active = getActivePayrollRun();
+  const active = getAuditPayrollRun();
   const currentStatus =
     active.executionState?.status === "confirmed"
       ? "Completed"
@@ -22,7 +22,7 @@ export function HistoricalRunsPage() {
           <td>{new Date(active.createdAt).toISOString().slice(0, 10)}</td>
           <td>{active.stats.employees}</td>
           <td>{currentStatus}</td>
-          <td><Link to={currentStatus === "Completed" ? "/payroll/completed" : "/payroll/processing"}>Open</Link></td>
+          <td><Link to={currentStatus === "Completed" ? "/runs/audit" : "/payroll"}>Open</Link></td>
         </tr>
       </Table>
     </Section>

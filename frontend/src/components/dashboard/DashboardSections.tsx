@@ -18,8 +18,8 @@ export function DashboardHeroSection({ hasRun, run }: DashboardHeroSectionProps)
           <h1 id="hero-title">Confidential payroll</h1>
           <p>Import payroll files, encrypt amounts, and settle private recipient balances.</p>
           <div className="hero-actions">
-            <Link className="button hero-button" to="/payroll/draft">Start payroll</Link>
-            <Link className="button ghost hero-button" to="/payout">Open portal</Link>
+            <Link className="button hero-button" to="/payroll">Start payroll</Link>
+            <Link className="button ghost hero-button" to="/portal">Open portal</Link>
           </div>
         </div>
         <div className="hero-status-panel" aria-label="Payroll status">
@@ -115,7 +115,7 @@ export function RunPayrollSection({ busy, uploadError, onUpload }: RunPayrollSec
               style={{ display: "none" }}
             />
           </label>
-          <Link className="button" to="/payroll/draft">Open draft</Link>
+          <Link className="button" to="/payroll">Open payroll</Link>
         </div>
       </div>
       {uploadError ? <p className="error-text">{uploadError}</p> : null}

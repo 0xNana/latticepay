@@ -18,30 +18,26 @@ const nav = [
   {
     to: "/dashboard",
     label: "Home",
-    description: "Summary",
     icon: "home" as const,
     match: (pathname: string) => pathname === "/" || pathname.startsWith("/dashboard")
   },
   {
-    to: "/payroll/draft",
+    to: "/payroll",
     label: "Payroll",
-    description: "Draft run",
     icon: "payroll" as const,
     match: (pathname: string) => pathname.startsWith("/payroll")
   },
   {
     to: "/runs",
     label: "Audit",
-    description: "Receipts",
     icon: "audit" as const,
     match: (pathname: string) => pathname.startsWith("/runs")
   },
   {
-    to: "/payout",
+    to: "/portal",
     label: "Portal",
-    description: "Recipient",
     icon: "portal" as const,
-    match: (pathname: string) => pathname.startsWith("/payout")
+    match: (pathname: string) => pathname.startsWith("/portal") || pathname.startsWith("/payout")
   }
 ];
 
@@ -206,7 +202,7 @@ export function Shell({ children }: PropsWithChildren) {
   const onOpenPortal = () => {
     setMobileNavOpen(false);
     setWalletDropdownOpen(false);
-    navigate("/payout");
+    navigate("/portal");
   };
 
   return (
@@ -254,7 +250,6 @@ export function Shell({ children }: PropsWithChildren) {
                 key={item.to}
                 to={item.to}
                 label={item.label}
-                description={item.description}
                 icon={item.icon}
                 active={active}
                 collapsed={sidebarCollapsed}
@@ -289,7 +284,6 @@ export function Shell({ children }: PropsWithChildren) {
                       <NavIcon name={item.icon} />
                       <span>
                         <span className="mobile-nav-link-label">{item.label}</span>
-                        <span className="mobile-nav-link-description">{item.description}</span>
                       </span>
                     </span>
                     <span aria-hidden="true">-&gt;</span>
@@ -477,14 +471,12 @@ function HeaderFaucet({
 function SidebarLink({
   to,
   label,
-  description,
   icon,
   active,
   collapsed
 }: {
   to: string;
   label: string;
-  description: string;
   icon: IconName;
   active: boolean;
   collapsed: boolean;
@@ -501,7 +493,6 @@ function SidebarLink({
       </span>
       <span className="sidebar-link-copy">
         <span className="sidebar-link-label">{label}</span>
-        <span className="sidebar-link-description">{description}</span>
       </span>
     </Link>
   );

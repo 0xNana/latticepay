@@ -1,14 +1,13 @@
 import { Link } from "react-router-dom";
 import { Section } from "../components/Cards";
 import { Table } from "../components/Table";
-import { downloadPain002Receipt } from "../data/pain002Receipt";
 import { getTxExplorerUrl, shortHash } from "../lib/explorer";
 import { getActivePayrollRun } from "../lib/payrollRunStore";
 
 export function PayrollCompletedPage() {
   const run = getActivePayrollRun();
   return (
-    <Section title={`Complete: ${run.cycleName}`} subtitle="Receipt and audit.">
+    <Section title={`Complete: ${run.cycleName}`} subtitle="Execution environment.">
       <Table headers={["Role", "Contributor", "Recipient", "Amount", "Status"]}>
         {run.payments.map((p) => (
           <tr key={p.id}>
@@ -32,9 +31,7 @@ export function PayrollCompletedPage() {
         ) : null}
       </p>
       <div className="cta-row">
-        <button className="button button-receipt" onClick={() => downloadPain002Receipt(run)}>
-          Download pain.002
-        </button>
+        <Link className="button" to="/payroll/new">Run another payroll</Link>
         <Link className="button" to="/runs/audit">Audit detail</Link>
       </div>
     </Section>

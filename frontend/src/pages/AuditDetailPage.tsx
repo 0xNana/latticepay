@@ -1,9 +1,10 @@
 import { Section } from "../components/Cards";
+import { downloadPain002Receipt } from "../data/pain002Receipt";
 import { getTxExplorerUrl, shortHash } from "../lib/explorer";
-import { getActivePayrollRun } from "../lib/payrollRunStore";
+import { getAuditPayrollRun } from "../lib/payrollRunStore";
 
 export function AuditDetailPage() {
-  const run = getActivePayrollRun();
+  const run = getAuditPayrollRun();
   const state = run.executionState || { status: "idle" as const };
   const timeline = [
     { label: "Uploaded", detail: "pain.001 parsed.", time: new Date(run.createdAt).toISOString() },
@@ -43,6 +44,11 @@ export function AuditDetailPage() {
           </li>
         ))}
       </ol>
+      <div className="cta-row">
+        <button className="button button-receipt" onClick={() => downloadPain002Receipt(run)}>
+          Download pain.002
+        </button>
+      </div>
     </Section>
   );
 }

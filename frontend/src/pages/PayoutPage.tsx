@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { Address } from "viem";
 import { Section } from "../components/Cards";
 import { getDecryptedPayrollBalance } from "../lib/fheClient";
-import { getActivePayrollRun, type PayrollPaymentDraft } from "../lib/payrollRunStore";
+import { getAuditPayrollRun, type PayrollPaymentDraft } from "../lib/payrollRunStore";
 import { connectWallet, getActiveWalletAccount, getSavedWalletAccount, onSavedWalletAccountChange } from "../lib/walletClient";
 
 const TOKEN_DECIMALS = 6n;
@@ -38,10 +38,10 @@ function findRecipientPayment(account: Address | null, payments: PayrollPaymentD
 }
 
 export function PayoutPage() {
-  const run = getActivePayrollRun();
+  const run = getAuditPayrollRun();
   const [account, setAccount] = useState<Address | null>(null);
   const [decryptedBalance, setDecryptedBalance] = useState<string | null>(null);
-  const [status, setStatus] = useState("Connect wallet to view balance.");
+  const [status, setStatus] = useState("Connect wallet.");
   const [busy, setBusy] = useState(false);
   const recipientPayment = findRecipientPayment(account, run.payments);
   const hasLoadedRun = run.payments.length > 0;
@@ -55,9 +55,9 @@ export function PayoutPage() {
     setStatus(
       nextAccount
         ? hasLoadedRun && !payment
-          ? "Connected wallet is not in this payroll run."
+          ? "Not a recipient."
           : "Ready."
-        : "Connect wallet to view balance."
+        : "Connect wallet."
     );
   };
 
@@ -81,7 +81,7 @@ export function PayoutPage() {
     if (!activeWallet) {
       setAccount(null);
       setDecryptedBalance(null);
-      setStatus("Connect wallet to view balance.");
+      setStatus("Connect wallet.");
       return null;
     }
 
@@ -113,14 +113,14 @@ export function PayoutPage() {
       if (!wallet) return;
       const payment = findRecipientPayment(wallet, run.payments);
       if (hasLoadedRun && !payment) {
-        setStatus("Connected wallet is not in this payroll run.");
+        setStatus("Not a recipient.");
         return;
       }
 
-      setStatus("Confirm signature.");
+      setStatus("Sign request.");
       const value = await getDecryptedPayrollBalance(wallet);
       setDecryptedBalance(formatUsd(value));
-      setStatus("Balance revealed.");
+      setStatus("Revealed.");
     } catch (error) {
       setStatus(getDecryptErrorMessage(error));
     } finally {
@@ -129,10 +129,10 @@ export function PayoutPage() {
   };
 
   const canReveal = !hasLoadedRun || isRunRecipient;
-  const actionLabel = !account ? "Connect wallet" : busy ? "Working..." : decryptedBalance ? "Reveal again" : "Reveal balance";
+  const actionLabel = !account ? "Connect" : busy ? "Working..." : decryptedBalance ? "Reveal again" : "Reveal";
   const statusLabel = account
     ? status
-    : "Connect wallet to view balance.";
+    : "Connect wallet.";
   const primaryAction = account ? onDecrypt : onConnect;
   const normalizedStatus = statusLabel.toLowerCase();
   const statusClassName = decryptedBalance
@@ -141,14 +141,15 @@ export function PayoutPage() {
         normalizedStatus.includes("unavailable") ||
         normalizedStatus.includes("cancelled") ||
         normalizedStatus.includes("not configured") ||
-        normalizedStatus.includes("not found")
+        normalizedStatus.includes("not found") ||
+        normalizedStatus.includes("not a recipient")
       ? "status-text status-text-warn"
       : "status-text";
 
   return (
-    <Section title="Recipient portal">
+    <Section title="Portal">
       <div className="card portal-balance-card">
-        <h3>Confidential balance</h3>
+        <h3>Balance</h3>
         <div className="detail-list">
           <div className="detail-row">
             <span className="detail-label">Wallet</span>
@@ -156,15 +157,15 @@ export function PayoutPage() {
           </div>
           <div className="detail-row">
             <span className="detail-label">Recipient</span>
-            <strong>{recipientPayment?.name || (hasLoadedRun ? "Not in loaded run" : "Any token holder")}</strong>
+            <strong>{recipientPayment?.name || (hasLoadedRun ? "No match" : "Any holder")}</strong>
           </div>
           <div className="detail-row">
             <span className="detail-label">Run</span>
-            <strong>{hasLoadedRun ? (confirmedRun ? "Confirmed" : "Not settled") : "No payroll loaded"}</strong>
+            <strong>{hasLoadedRun ? (confirmedRun ? "Confirmed" : "Pending") : "None"}</strong>
           </div>
           <div className="detail-row">
             <span className="detail-label">Balance</span>
-            <strong>{decryptedBalance || "-"}</strong>
+            <strong>{decryptedBalance || "Hidden"}</strong>
           </div>
         </div>
         <div className="cta-row">

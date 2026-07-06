@@ -1,6 +1,7 @@
 import type { Address } from "viem";
 
 const STORAGE_KEY = "latticepay_payroll_run";
+const AUDIT_STORAGE_KEY = "latticepay_latest_audited_payroll_run";
 
 export type PayrollPaymentDraft = {
   id: string;
@@ -69,35 +70,32 @@ function buildDefaultRun(): PayrollRunDraft {
   };
 }
 
-export function getActivePayrollRun(): PayrollRunDraft {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return buildDefaultRun();
-    const parsed = JSON.parse(raw) as PayrollRunDraft & {
-      payments: Array<PayrollPaymentDraft & { amountMinor: string }>;
-      execution: { recipients: Address[]; clearAmounts: string[] };
-      stats: { employees: number; totalMinor: string; totalDisplay: string };
-      executionState?: PayrollRunDraft["executionState"];
-    };
-    return {
-      ...parsed,
-      payments: parsed.payments.map((p) => ({ ...p, amountMinor: BigInt(p.amountMinor) })),
-      execution: {
-        ...parsed.execution,
-        clearAmounts: parsed.execution.clearAmounts.map((n) => BigInt(n))
-      },
-      stats: {
-        ...parsed.stats,
-        totalMinor: BigInt(parsed.stats.totalMinor)
-      }
-    };
-  } catch {
-    return buildDefaultRun();
-  }
+type SerializedPayrollPayment = Omit<PayrollPaymentDraft, "amountMinor"> & { amountMinor: string };
+
+type SerializedPayrollRun = Omit<PayrollRunDraft, "payments" | "execution" | "stats"> & {
+  payments: SerializedPayrollPayment[];
+  execution: { recipients: Address[]; clearAmounts: string[] };
+  stats: { employees: number; totalMinor: string; totalDisplay: string };
+};
+
+function deserializeRun(raw: string): PayrollRunDraft {
+  const parsed = JSON.parse(raw) as SerializedPayrollRun;
+  return {
+    ...parsed,
+    payments: parsed.payments.map((p) => ({ ...p, amountMinor: BigInt(p.amountMinor) })),
+    execution: {
+      ...parsed.execution,
+      clearAmounts: parsed.execution.clearAmounts.map((n) => BigInt(n))
+    },
+    stats: {
+      ...parsed.stats,
+      totalMinor: BigInt(parsed.stats.totalMinor)
+    }
+  };
 }
 
-export function saveActivePayrollRun(run: PayrollRunDraft) {
-  const serializable = {
+function serializeRun(run: PayrollRunDraft): SerializedPayrollRun {
+  return {
     ...run,
     payments: run.payments.map((p) => ({ ...p, amountMinor: p.amountMinor.toString() })),
     execution: {
@@ -109,7 +107,42 @@ export function saveActivePayrollRun(run: PayrollRunDraft) {
       totalMinor: run.stats.totalMinor.toString()
     }
   };
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable));
+}
+
+function readRun(key: string): PayrollRunDraft | null {
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? deserializeRun(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeRun(key: string, run: PayrollRunDraft) {
+  window.localStorage.setItem(key, JSON.stringify(serializeRun(run)));
+}
+
+export function getActivePayrollRun(): PayrollRunDraft {
+  return readRun(STORAGE_KEY) || buildDefaultRun();
+}
+
+export function getAuditPayrollRun(): PayrollRunDraft {
+  const active = getActivePayrollRun();
+  if (active.executionState?.status === "confirmed") return active;
+  return readRun(AUDIT_STORAGE_KEY) || active;
+}
+
+export function saveActivePayrollRun(run: PayrollRunDraft) {
+  writeRun(STORAGE_KEY, run);
+}
+
+export function archiveAndClearExecutedPayrollRun() {
+  const current = getActivePayrollRun();
+  if (current.executionState?.runId) {
+    writeRun(AUDIT_STORAGE_KEY, current);
+  }
+  window.localStorage.removeItem(STORAGE_KEY);
+  return buildDefaultRun();
 }
 
 export function formatTokenAmount(minor: bigint, ccy = "USDC", decimals = 6) {
