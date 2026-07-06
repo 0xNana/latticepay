@@ -19,6 +19,6 @@ It uses:
 
 ## Scope of This Submission
 - Network: Sepolia testnet.
-- Token model: ERC-7984 wrapper over mock underlying stable token.
+- Token model: ERC-7984 wrapper over a mock underlying stable token, showing how an existing ERC-20 treasury can enter the confidential payroll flow.
 - Batch guard: max 100 payments per run onchain.
 - Focus: confidential payroll execution UX with real onchain settlement behavior.

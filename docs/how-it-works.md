@@ -6,7 +6,8 @@
 
 ## 2. Fund
 - User opens Faucet panel and requests test payroll tokens.
-- Connected wallet mints test underlying token, approves the wrapper, and wraps into confidential token for itself.
+- Connected wallet mints a test ERC-20 stable token, approves the ERC-7984 wrapper, and wraps into confidential payroll tokens.
+- The faucet is a demo bridge from a familiar stablecoin treasury model into ERC-7984; payroll execution after funding uses confidential token transfers.
 
 ## 3. Upload & Validate
 - User uploads a `pain.001` file.
