@@ -24,8 +24,8 @@ artifacts/
 cache/
 
 # Hardhat / Solidity
-packages/contracts/fhevmTemp/
-packages/contracts/typechain-types/
+contracts/fhevmTemp/
+contracts/typechain-types/
 
 # Internal docs (not for public repo)
 internal-docs/

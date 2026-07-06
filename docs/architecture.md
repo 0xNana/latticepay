@@ -1,8 +1,8 @@
 # Architecture
 
 ## Components
-- `apps/web` (frontend): upload/validate payroll file, encrypt amounts, collect user signatures, submit payroll runs, display status.
-- `packages/contracts` (smart contracts): `PayrollExecutor` + confidential token wrapper + test/deploy scripts.
+- `frontend` (frontend): upload/validate payroll file, encrypt amounts, collect user signatures, submit payroll runs, display status.
+- `contracts` (smart contracts): `PayrollExecutor` + confidential token wrapper + test/deploy scripts.
 
 ## Contract Layer
 - `PayrollExecutor`:

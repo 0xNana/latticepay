@@ -9,8 +9,7 @@
 ## Install
 ```bash
 npm install
-npm --workspace apps/web install
-npm --prefix packages/contracts install
+npm --prefix contracts install
 ```
 
 ## Contracts
@@ -19,12 +18,12 @@ npm run contracts:compile
 npm run contracts:test
 ```
 
-Deploy contracts from `packages/contracts` and capture:
+Deploy contracts from `contracts` and capture:
 - underlying token address
 - confidential payroll token (ERC-7984 wrapper) address
 - payroll executor address
 
-## Frontend Env (`apps/web/.env.local`)
+## Frontend Env (`frontend/.env.local`)
 Required:
 - `VITE_APP_URL`
 - `VITE_SEPOLIA_RPC_URL`

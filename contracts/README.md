@@ -52,7 +52,7 @@ For detailed setup and Solidity guidance, see:
 ## 📁 Project Structure
 
 ```
-packages/contracts/
+contracts/
 ├── contracts/
 │   ├── PayrollExecutor.sol
 │   ├── ConfidentialPayrollToken.sol

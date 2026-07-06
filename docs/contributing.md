@@ -3,20 +3,20 @@
 Thanks for your interest in contributing to Lattice Pay.
 
 ## Scope
-- This repository contains web, API, and contracts packages.
+- This repository contains frontend and contracts projects.
 - Keep PRs focused and small (feature + tests + docs together).
 
 ## Local Setup
 ```bash
 npm install
-npm --workspace apps/web run dev
+npm --workspace frontend run dev
 ```
 
 ## Quality Checks
 ```bash
 npm run contracts:compile
 npm run contracts:test
-npm --workspace apps/web run build
+npm --workspace frontend run build
 ```
 
 ## PR Expectations

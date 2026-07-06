@@ -12,14 +12,14 @@ It supports a practical payroll workflow:
 - Lattice Pay keeps salary amounts confidential while preserving settlement and audit trails.
 
 ## Monorepo Structure
-- `apps/web` — frontend (Vite + React)
-- `packages/contracts` — Solidity contracts and tests
+- `frontend` — frontend (Vite + React)
+- `contracts` — Solidity contracts and tests
 - `docs` — public docs
 
 ## Quick Start
 ```bash
 npm install
-npm --workspace apps/web run dev
+npm --workspace frontend run dev
 ```
 
 Frontend runs on `5173` by default.
@@ -28,7 +28,7 @@ Frontend runs on `5173` by default.
 ```bash
 npm run contracts:compile
 npm run contracts:test
-npm --workspace apps/web run build
+npm --workspace frontend run build
 ```
 
 ## Contracts
@@ -71,4 +71,4 @@ npm run contracts:test
 
 ## License
 - Root project: ISC (see root `package.json`)
-- Contracts package: MIT (`packages/contracts/LICENSE`)
+- Contracts package: MIT (`contracts/LICENSE`)
