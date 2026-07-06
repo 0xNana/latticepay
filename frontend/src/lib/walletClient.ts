@@ -20,6 +20,7 @@ declare global {
 }
 
 const WALLET_SESSION_KEY = "latticepay_wallet_account";
+const WALLET_ACCOUNT_CHANGED_EVENT = "latticepay_wallet_account_changed";
 const SEPOLIA_CHAIN_ID_HEX = `0x${sepolia.id.toString(16)}`;
 
 function getBrowserWallet(): BrowserWalletProvider {
@@ -189,7 +190,17 @@ export function saveWalletAccount(address: Address | null) {
   try {
     if (address) window.localStorage.setItem(WALLET_SESSION_KEY, address);
     else window.localStorage.removeItem(WALLET_SESSION_KEY);
+    window.dispatchEvent(new CustomEvent(WALLET_ACCOUNT_CHANGED_EVENT, { detail: { address } }));
   } catch {}
+}
+
+export function onSavedWalletAccountChange(callback: (address: Address | null) => void) {
+  const listener = (event: Event) => {
+    const detail = (event as CustomEvent<{ address?: Address | null }>).detail;
+    callback(detail?.address || null);
+  };
+  window.addEventListener(WALLET_ACCOUNT_CHANGED_EVENT, listener);
+  return () => window.removeEventListener(WALLET_ACCOUNT_CHANGED_EVENT, listener);
 }
 
 async function claimViaWalletDirect(

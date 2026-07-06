@@ -6,6 +6,7 @@ import {
   claimPayrollTokens,
   connectWallet,
   getSavedWalletAccount,
+  onSavedWalletAccountChange,
   saveWalletAccount
 } from "../lib/walletClient";
 import { checkRelayerCdnHealth } from "../lib/fheClient";
@@ -87,6 +88,7 @@ export function Shell({ children }: PropsWithChildren) {
   useEffect(() => {
     const saved = getSavedWalletAccount();
     if (saved) setWalletAddress(saved);
+    return onSavedWalletAccountChange(setWalletAddress);
   }, []);
 
   useEffect(() => {

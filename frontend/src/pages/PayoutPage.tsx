@@ -3,7 +3,7 @@ import type { Address } from "viem";
 import { Section } from "../components/Cards";
 import { getDecryptedPayrollBalance } from "../lib/fheClient";
 import { getActivePayrollRun, type PayrollPaymentDraft } from "../lib/payrollRunStore";
-import { connectWallet, getActiveWalletAccount, getSavedWalletAccount } from "../lib/walletClient";
+import { connectWallet, getActiveWalletAccount, getSavedWalletAccount, onSavedWalletAccountChange } from "../lib/walletClient";
 
 const TOKEN_DECIMALS = 6n;
 
@@ -48,25 +48,31 @@ export function PayoutPage() {
   const isRunRecipient = Boolean(recipientPayment);
   const confirmedRun = run.executionState?.status === "confirmed";
 
+  const syncAccount = (nextAccount: Address | null) => {
+    setAccount(nextAccount);
+    setDecryptedBalance(null);
+    const payment = findRecipientPayment(nextAccount, run.payments);
+    setStatus(
+      nextAccount
+        ? hasLoadedRun && !payment
+          ? "Connected wallet is not in this payroll run."
+          : "Ready."
+        : "Connect wallet to view balance."
+    );
+  };
+
   useEffect(() => {
     let active = true;
     (async () => {
       const activeWallet = await getActiveWalletAccount();
       const saved = getSavedWalletAccount();
       if (!active) return;
-      const nextAccount = activeWallet || saved;
-      setAccount(nextAccount);
-      const payment = findRecipientPayment(nextAccount, run.payments);
-      setStatus(
-        nextAccount
-          ? hasLoadedRun && !payment
-            ? "Connected wallet is not in this payroll run."
-            : "Ready."
-          : "Connect wallet to view balance."
-      );
+      syncAccount(activeWallet || saved);
     })();
+    const unsubscribe = onSavedWalletAccountChange(syncAccount);
     return () => {
       active = false;
+      unsubscribe();
     };
   }, []);
 
@@ -91,10 +97,7 @@ export function PayoutPage() {
     setBusy(true);
     try {
       const wallet = await connectWallet();
-      setAccount(wallet);
-      setDecryptedBalance(null);
-      const payment = findRecipientPayment(wallet, run.payments);
-      setStatus(hasLoadedRun && !payment ? "Connected wallet is not in this payroll run." : "Ready.");
+      syncAccount(wallet);
     } catch (error) {
       setStatus(getDecryptErrorMessage(error));
     } finally {
