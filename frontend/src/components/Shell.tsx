@@ -394,6 +394,16 @@ function WalletDropdown({
     await balanceDecrypt.decrypt();
   };
 
+  const balanceActionLabel = balanceDecrypt.busy
+    ? balanceDecrypt.needsPermit
+      ? "Authorizing"
+      : "Decrypting"
+    : balanceDecrypt.rawBalance !== null
+      ? "Refresh balance"
+      : balanceDecrypt.needsPermit
+        ? "Authorize balance"
+        : "Decrypt balance";
+
   if (!walletAddress) {
     return (
       <button className="button wallet-connect-button" onClick={onConnectWallet} disabled={busy}>
@@ -443,7 +453,7 @@ function WalletDropdown({
           <div className="wallet-dropdown-body">
             <button className="wallet-dropdown-action" type="button" disabled={balanceDecrypt.busy} onClick={onDecryptBalance}>
               <NavIcon name="eye" />
-              {balanceDecrypt.busy ? "Decrypting" : balanceDecrypt.rawBalance !== null ? "Refresh balance" : "Decrypt balance"}
+              {balanceActionLabel}
             </button>
 
             <div className="wallet-dropdown-balance" aria-live="polite">

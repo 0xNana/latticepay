@@ -47,6 +47,9 @@ type PayrollBalanceDecryptState = {
   rawBalance: bigint | null;
   status: string;
   busy: boolean;
+  hasPermit: boolean;
+  needsPermit: boolean;
+  canDecrypt: boolean;
   decrypt: () => Promise<bigint | null>;
 };
 
@@ -61,6 +64,8 @@ export function usePayrollBalanceDecrypt(account: Address | null): PayrollBalanc
 
   const permitQuery = useHasPermit({ contractAddresses });
   const hasPermit = Boolean(permitGranted || permitQuery.data);
+  const canDecrypt = Boolean(account && tokenAddress);
+  const needsPermit = Boolean(canDecrypt && !hasPermit && !permitQuery.isLoading);
   const grantPermit = useGrantPermit();
   const balanceQuery = useConfidentialBalance(
     {
@@ -103,7 +108,7 @@ export function usePayrollBalanceDecrypt(account: Address | null): PayrollBalanc
 
     setRawBalance(null);
     setManualBusy(true);
-    setStatus(hasPermit ? "Decrypting." : "Authorize decryption.");
+    setStatus(hasPermit ? "Decrypting." : "Authorize in wallet.");
 
     try {
       await ensureSepoliaNetwork();
@@ -128,6 +133,7 @@ export function usePayrollBalanceDecrypt(account: Address | null): PayrollBalanc
       if (!hasPermit) {
         await grantPermit.mutateAsync(contractAddresses);
         setPermitGranted(true);
+        await permitQuery.refetch();
       }
       setRequested(true);
       setStatus("Decrypting.");
@@ -144,12 +150,15 @@ export function usePayrollBalanceDecrypt(account: Address | null): PayrollBalanc
     } finally {
       setManualBusy(false);
     }
-  }, [account, balanceQuery, contractAddresses, grantPermit, hasPermit, tokenAddress]);
+  }, [account, balanceQuery, contractAddresses, grantPermit, hasPermit, permitQuery, tokenAddress]);
 
   return {
     rawBalance,
     status,
     busy: manualBusy || grantPermit.isPending || balanceQuery.isLoading || balanceQuery.isFetching,
+    hasPermit,
+    needsPermit,
+    canDecrypt,
     decrypt
   };
 }

@@ -1,4 +1,4 @@
-import { createPublicClient, createWalletClient, custom, http, type Address } from "viem";
+import { createPublicClient, createWalletClient, custom, http, type Address, type EIP1193Provider } from "viem";
 import { sepolia } from "viem/chains";
 import { appConfig } from "./config";
 
@@ -40,6 +40,14 @@ const walletRpc = {
 };
 
 export const walletProvider = walletRpc;
+
+export function getWalletEthereumProvider(): EIP1193Provider | undefined {
+  try {
+    return getBrowserWallet() as EIP1193Provider;
+  } catch {
+    return undefined;
+  }
+}
 
 export const walletClient = createWalletClient({
   chain: sepolia,
