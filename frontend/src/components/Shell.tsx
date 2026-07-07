@@ -9,10 +9,11 @@ import {
   onSavedWalletAccountChange,
   saveWalletAccount
 } from "../lib/walletClient";
-import { checkRelayerCdnHealth } from "../lib/fheClient";
 import { hasFaucetConfig } from "../lib/config";
+import { usePayrollBalanceDecrypt } from "../lib/usePayrollBalanceDecrypt";
+import { getWalletUserProfile } from "../lib/payrollRunStore";
 
-type IconName = "home" | "payroll" | "audit" | "portal" | "menu" | "close" | "collapse" | "expand" | "faucet";
+type IconName = "home" | "payroll" | "audit" | "portal" | "menu" | "close" | "collapse" | "expand" | "faucet" | "wallet" | "chevron" | "copy" | "check" | "eye" | "logout";
 
 const nav = [
   {
@@ -45,6 +46,13 @@ const TOKEN_DECIMALS = 6n;
 const TOKEN_SYMBOL = "cUSDC";
 const FAUCET_MAX_TOKENS = 1000000;
 
+function formatConfidentialBalance(raw: bigint) {
+  const base = 10n ** TOKEN_DECIMALS;
+  const whole = raw / base;
+  const frac = (raw % base).toString().padStart(Number(TOKEN_DECIMALS), "0").replace(/0+$/, "").slice(0, 2);
+  return Number(whole).toLocaleString() + (frac ? "." + frac : "") + " " + TOKEN_SYMBOL;
+}
+
 const toRawAmount = (value: string): bigint => {
   const normalized = value.trim().replace(/\$/g, "").replace(/,/g, "");
   if (!normalized) throw new Error("Enter an amount.");
@@ -64,7 +72,6 @@ export function Shell({ children }: PropsWithChildren) {
   const [showFaucetCard, setShowFaucetCard] = useState(false);
   const [walletDropdownOpen, setWalletDropdownOpen] = useState(false);
   const [faucetAmount, setFaucetAmount] = useState("$1000000");
-  const [relayerHealthy, setRelayerHealthy] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
   const toastTimerRef = useRef<number | null>(null);
   const isAuthenticated = Boolean(walletAddress);
@@ -109,17 +116,6 @@ export function Shell({ children }: PropsWithChildren) {
       document.body.style.overflow = previousOverflow;
     };
   }, [mobileNavOpen]);
-
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      const healthy = await checkRelayerCdnHealth();
-      if (alive) setRelayerHealthy(healthy);
-    })();
-    return () => {
-      alive = false;
-    };
-  }, []);
 
   useEffect(
     () => () => {
@@ -316,8 +312,8 @@ export function Shell({ children }: PropsWithChildren) {
               walletAddress={walletAddress}
               busy={busy}
               open={walletDropdownOpen}
-              relayerHealthy={relayerHealthy}
               onToggle={() => setWalletDropdownOpen((value) => !value)}
+              onClose={() => setWalletDropdownOpen(false)}
               onConnectWallet={onConnectWallet}
               onDisconnect={onDisconnect}
               onOpenPortal={onOpenPortal}
@@ -337,8 +333,8 @@ type WalletDropdownProps = {
   walletAddress: Address | null;
   busy: boolean;
   open: boolean;
-  relayerHealthy: boolean | null;
   onToggle: () => void;
+  onClose: () => void;
   onConnectWallet: () => void;
   onDisconnect: () => void;
   onOpenPortal: () => void;
@@ -348,58 +344,133 @@ function WalletDropdown({
   walletAddress,
   busy,
   open,
-  relayerHealthy,
   onToggle,
+  onClose,
   onConnectWallet,
   onDisconnect,
   onOpenPortal
 }: WalletDropdownProps) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [copied, setCopied] = useState(false);
+  const balanceDecrypt = usePayrollBalanceDecrypt(walletAddress);
   const addressLabel = walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : null;
+  const profile = getWalletUserProfile(walletAddress);
+
+  useEffect(() => {
+    if (!open) return;
+
+    function onPointerDown(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) onClose();
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [onClose, open]);
+
+  useEffect(() => {
+    setCopied(false);
+  }, [walletAddress]);
+
+  const onCopyAddress = async () => {
+    if (!walletAddress) return;
+    try {
+      await navigator.clipboard.writeText(walletAddress);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  const onDecryptBalance = async () => {
+    await balanceDecrypt.decrypt();
+  };
+
+  if (!walletAddress) {
+    return (
+      <button className="button wallet-connect-button" onClick={onConnectWallet} disabled={busy}>
+        <NavIcon name="wallet" />
+        Connect wallet
+      </button>
+    );
+  }
 
   return (
-    <div className="wallet-dropdown">
-      {walletAddress ? (
-        <button
-          className="wallet-trigger"
-          type="button"
-          aria-expanded={open}
-          aria-haspopup="menu"
-          onClick={onToggle}
-          disabled={busy}
-        >
-          <span className="wallet-trigger-dot" aria-hidden="true" />
+    <div className="wallet-dropdown" ref={menuRef}>
+      <button
+        className={`wallet-trigger wallet-dropdown-trigger ${open ? "is-open" : ""}`}
+        type="button"
+        aria-expanded={open}
+        aria-haspopup="menu"
+        onClick={onToggle}
+        disabled={busy}
+      >
+        <span className="wallet-dropdown-trigger-main">
+          <NavIcon name="wallet" />
           <span>{addressLabel}</span>
-        </button>
-      ) : (
-        <button className="button ghost wallet-connect-button" onClick={onConnectWallet} disabled={busy}>Connect wallet</button>
-      )}
+        </span>
+        <NavIcon name="chevron" />
+      </button>
+
       {open ? (
-        <div className="wallet-menu" role="menu">
-          <div className="wallet-menu-head">
-            <span>Wallet</span>
-            <strong>{walletAddress ? "Connected" : "Not connected"}</strong>
-          </div>
-          {walletAddress ? (
-            <div className="wallet-account-row">
-              <span>Account</span>
-              <strong>{addressLabel}</strong>
+        <div className="wallet-menu wallet-dropdown-menu" role="menu" aria-label="Wallet details">
+          <div className="wallet-dropdown-header">
+            <span className="wallet-dropdown-avatar" aria-hidden="true">
+              <NavIcon name="wallet" />
+            </span>
+            <div className="wallet-dropdown-copyline">
+              <div>
+                <span className="section-label">{profile.headerLabel}</span>
+                <strong title={walletAddress}>{profile.headerTitle}</strong>
+                {profile.name ? <span className="wallet-dropdown-address">{addressLabel}</span> : null}
+                <p>{profile.description}</p>
+              </div>
+              <button className="wallet-dropdown-copy" type="button" onClick={onCopyAddress} aria-label="Copy wallet address">
+                <NavIcon name={copied ? "check" : "copy"} />
+                <span>{copied ? "Copied" : "Copy"}</span>
+              </button>
             </div>
-          ) : null}
-          <div className="wallet-network-row">
-            <span>Network</span>
-            <strong>Sepolia</strong>
           </div>
-          {relayerHealthy === false ? <span className="warning-chip wallet-warning">Relayer offline</span> : null}
-          <div className="wallet-menu-actions">
-            {walletAddress ? <button className="button ghost" onClick={onOpenPortal} disabled={busy}>Open portal</button> : null}
-            {walletAddress ? <button className="button ghost" onClick={onDisconnect} disabled={busy}>Disconnect</button> : null}
-            {!walletAddress ? <button className="button" onClick={onConnectWallet} disabled={busy}>Connect wallet</button> : null}
+
+          <div className="wallet-dropdown-body">
+            <button className="wallet-dropdown-action" type="button" disabled={balanceDecrypt.busy} onClick={onDecryptBalance}>
+              <NavIcon name="eye" />
+              {balanceDecrypt.busy ? "Decrypting" : balanceDecrypt.rawBalance !== null ? "Refresh balance" : "Decrypt balance"}
+            </button>
+
+            <div className="wallet-dropdown-balance" aria-live="polite">
+              <span>Balance</span>
+              <strong>{balanceDecrypt.rawBalance !== null ? formatConfidentialBalance(balanceDecrypt.rawBalance) : balanceDecrypt.status}</strong>
+            </div>
+
+            <div className="wallet-dropdown-network">
+              <span>Network</span>
+              <strong>Sepolia</strong>
+            </div>
+
+            <button className="wallet-dropdown-action" type="button" onClick={onOpenPortal} disabled={busy}>
+              <NavIcon name="portal" />
+              Open portal
+            </button>
+            <button className="wallet-dropdown-action is-danger" type="button" onClick={onDisconnect} disabled={busy}>
+              <NavIcon name="logout" />
+              Disconnect
+            </button>
           </div>
         </div>
       ) : null}
     </div>
   );
 }
+
 
 function BrandLink({ compact }: { compact: boolean }) {
   return (
@@ -508,7 +579,13 @@ function NavIcon({ name }: { name: IconName }) {
     close: ["M6 6l12 12", "M18 6 6 18"],
     collapse: ["M15 6 9 12l6 6", "M19 5v14"],
     expand: ["M9 6l6 6-6 6", "M5 5v14"],
-    faucet: ["M12 3c2.8 3.5 5 6.1 5 9a5 5 0 1 1-10 0c0-2.9 2.2-5.5 5-9Z"]
+    faucet: ["M12 3c2.8 3.5 5 6.1 5 9a5 5 0 1 1-10 0c0-2.9 2.2-5.5 5-9Z"],
+    wallet: ["M4 7a2 2 0 0 1 2-2h12a1 1 0 0 1 1 1v2", "M4 7h15a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H6a2 2 0 0 1-2-2V7Z", "M16 12h2"],
+    chevron: ["M6 9l6 6 6-6"],
+    copy: ["M8 8h10v10H8V8Z", "M6 16H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"],
+    check: ["M5 12l4 4L19 6"],
+    eye: ["M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z", "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"],
+    logout: ["M10 5H6a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h4", "M15 8l4 4-4 4", "M19 12H9"]
   };
 
   return (

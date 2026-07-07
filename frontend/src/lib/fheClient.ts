@@ -1,17 +1,5 @@
-import { recoverTypedDataAddress, type Address, type Hex } from "viem";
-import { toHex } from "viem";
+import { toHex, type Address, type Hex } from "viem";
 import { appConfig } from "./config";
-import { ensureSepoliaNetwork, publicClient, walletClient, walletProvider } from "./walletClient";
-
-const confidentialTokenAbi = [
-  {
-    type: "function",
-    name: "confidentialBalanceOf",
-    stateMutability: "view",
-    inputs: [{ name: "account", type: "address" }],
-    outputs: [{ name: "", type: "bytes32" }]
-  }
-] as const;
 
 type RelayerInstance = {
   createEncryptedInput: (
@@ -21,23 +9,6 @@ type RelayerInstance = {
     add64: (value: bigint | number) => void;
     encrypt: () => Promise<{ handles: Hex[]; inputProof: Hex }>;
   };
-  generateKeypair: () => { publicKey: Hex; privateKey: Hex };
-  createEIP712: (publicKey: string, contractAddresses: string[], startTimestamp: number, durationDays: number) => {
-    domain: unknown;
-    types: unknown;
-    primaryType: string;
-    message: unknown;
-  };
-  userDecrypt: (
-    handlePairs: Array<{ handle: Hex; contractAddress: Address }>,
-    privateKey: string,
-    publicKey: string,
-    signature: string,
-    contractAddresses: string[],
-    userAddress: string,
-    startTimestamp: number,
-    durationDays: number
-  ) => Promise<Record<Hex, bigint | boolean | Hex>>;
 };
 
 type RelayerSdkGlobal = {
@@ -54,29 +25,29 @@ declare global {
 
 let relayerScriptPromise: Promise<void> | null = null;
 let relayerInstancePromise: Promise<RelayerInstance> | null = null;
-let relayerCdnHealthy: boolean | null = null;
+let relayerSdkHealthy: boolean | null = null;
 const relayerDebug = appConfig.walletDebug;
 
-export async function checkRelayerCdnHealth(): Promise<boolean> {
-  if (relayerCdnHealthy !== null) return relayerCdnHealthy;
+async function checkRelayerSdkHealth(): Promise<boolean> {
+  if (relayerSdkHealthy !== null) return relayerSdkHealthy;
   try {
-    const response = await fetch(appConfig.relayerSdkCdn, {
+    const response = await fetch(appConfig.relayerSdkUrl, {
       method: "HEAD",
       mode: "cors"
     });
-    relayerCdnHealthy = response.ok;
-    if (relayerDebug) console.debug("[relayer] cdn health", { url: appConfig.relayerSdkCdn, ok: response.ok, status: response.status });
+    relayerSdkHealthy = response.ok;
+    if (relayerDebug) console.debug("[relayer] sdk health", { url: appConfig.relayerSdkUrl, ok: response.ok, status: response.status });
   } catch {
-    relayerCdnHealthy = false;
-    if (relayerDebug) console.debug("[relayer] cdn health failed", { url: appConfig.relayerSdkCdn });
+    relayerSdkHealthy = false;
+    if (relayerDebug) console.debug("[relayer] sdk health failed", { url: appConfig.relayerSdkUrl });
   }
-  return relayerCdnHealthy;
+  return relayerSdkHealthy;
 }
 
-async function loadRelayerSdkFromCdn() {
+async function loadRelayerSdk() {
   if (window.relayerSDK) return;
   if (!relayerScriptPromise) {
-    if (relayerDebug) console.debug("[relayer] loading sdk script", { url: appConfig.relayerSdkCdn });
+    if (relayerDebug) console.debug("[relayer] loading sdk script", { url: appConfig.relayerSdkUrl });
     relayerScriptPromise = new Promise<void>((resolve, reject) => {
       const existing = document.querySelector(`script[data-relayer-sdk="true"]`) as HTMLScriptElement | null;
       if (existing) {
@@ -88,18 +59,18 @@ async function loadRelayerSdkFromCdn() {
       }
 
       const script = document.createElement("script");
-      script.src = appConfig.relayerSdkCdn;
+      script.src = appConfig.relayerSdkUrl;
       script.async = true;
       script.type = "text/javascript";
       script.crossOrigin = "anonymous";
       script.dataset.relayerSdk = "true";
       script.onload = () => resolve();
-      script.onerror = () => reject(new Error("Failed to load relayer SDK from CDN."));
+      script.onerror = () => reject(new Error("Failed to load relayer SDK."));
       document.head.appendChild(script);
     });
   }
   await relayerScriptPromise;
-  if (!window.relayerSDK) throw new Error("Relayer SDK global not available after CDN load.");
+  if (!window.relayerSDK) throw new Error("Relayer SDK global not available after script load.");
   if (relayerDebug) console.debug("[relayer] sdk script loaded");
 }
 
@@ -107,7 +78,7 @@ async function getRelayerInstance() {
   if (!relayerInstancePromise) {
     relayerInstancePromise = (async () => {
       if (relayerDebug) console.debug("[relayer] init start");
-      await loadRelayerSdkFromCdn();
+      await loadRelayerSdk();
       const sdk = window.relayerSDK!;
       if (relayerDebug) console.debug("[relayer] initSDK()");
       await sdk.initSDK();
@@ -123,169 +94,6 @@ async function getRelayerInstance() {
   return relayerInstancePromise;
 }
 
-function normalizeTypedDataTypes(types: Record<string, unknown>) {
-  const next = { ...(types as Record<string, unknown>) };
-  delete next.EIP712Domain;
-  return next;
-}
-
-async function signUserDecryptTypedData(address: Address, eip712: {
-  domain: unknown;
-  types: unknown;
-  primaryType: string;
-  message: unknown;
-}) {
-  const types = normalizeTypedDataTypes(eip712.types as Record<string, unknown>);
-  const signPayload = {
-    account: address,
-    domain: eip712.domain as any,
-    types: types as any,
-    primaryType: eip712.primaryType as any,
-    message: eip712.message as any
-  } as any;
-
-  let signature: Hex;
-  const v4Payload = {
-    domain: eip712.domain,
-    types: { ...(eip712.types as Record<string, unknown>) },
-    primaryType: eip712.primaryType,
-    message: eip712.message
-  };
-  try {
-    signature = (await walletProvider.request({
-      method: "eth_signTypedData_v4",
-      params: [address, JSON.stringify(v4Payload)]
-    })) as Hex;
-  } catch (firstError) {
-    try {
-      signature = await walletClient.signTypedData(signPayload);
-    } catch (secondError) {
-      throw new Error(
-        `Typed-data signature failed. ${String((firstError as Error)?.message || firstError)} | fallback: ${String((secondError as Error)?.message || secondError)}`
-      );
-    }
-  }
-
-  try {
-    if (relayerDebug) {
-      const accounts = (await walletProvider.request({ method: "eth_accounts" })) as Address[];
-      console.debug("[relayer] wallet accounts", { accounts, signingAs: address });
-    }
-    const recovered = await recoverTypedDataAddress({
-      account: address,
-      domain: eip712.domain as any,
-      types: types as any,
-      primaryType: eip712.primaryType as any,
-      message: eip712.message as any,
-      signature
-    } as any);
-    if (recovered.toLowerCase() !== address.toLowerCase()) {
-      const mismatchError = new Error(
-        `Signer mismatch for decrypt auth. signedBy=${recovered} expected=${address}. The relayer user-decrypt flow requires the connected wallet to sign for this address.`
-      );
-      if (relayerDebug) {
-        console.debug("[relayer] typed data signer mismatch", {
-          expected: address,
-          recovered
-        });
-      }
-      throw mismatchError;
-    }
-  } catch (error) {
-    if ((error as Error)?.message?.startsWith("Signer mismatch for decrypt auth.")) {
-      throw error;
-    }
-    if (relayerDebug) {
-      console.debug("[relayer] typed data recovery check failed", {
-        expected: address,
-        error: String((error as Error)?.message || error)
-      });
-    }
-  }
-
-  return signature;
-}
-
-async function getConfidentialBalanceHandle(address: Address): Promise<Hex> {
-  if (!appConfig.payrollToken) throw new Error("Missing VITE_PAYROLL_TOKEN_ADDRESS.");
-  return publicClient.readContract({
-    address: appConfig.payrollToken,
-    abi: confidentialTokenAbi,
-    functionName: "confidentialBalanceOf",
-    args: [address]
-  }) as Promise<Hex>;
-}
-
-function isZeroHandle(value: Hex) {
-  return /^0x0{64}$/i.test(value);
-}
-
-function readDecryptedValue(decrypted: Record<Hex, bigint | boolean | Hex>, handle: Hex) {
-  const direct = decrypted[handle];
-  if (direct !== undefined) return direct;
-
-  const normalizedHandle = handle.toLowerCase();
-  const entry = Object.entries(decrypted).find(([key]) => key.toLowerCase() === normalizedHandle);
-  return entry?.[1];
-}
-
-function getRelayerErrorMessage(error: unknown) {
-  const parts = [error, (error as { cause?: unknown })?.cause]
-    .map((item) => String((item as Error)?.message || item || ""))
-    .filter(Boolean);
-  return parts.join(" | ") || "Unknown relayer error.";
-}
-
-export async function getDecryptedPayrollBalance(address: Address): Promise<bigint> {
-  if (!appConfig.payrollToken) throw new Error("Missing VITE_PAYROLL_TOKEN_ADDRESS.");
-  const payrollToken = appConfig.payrollToken;
-
-  await ensureSepoliaNetwork();
-  const handle = await getConfidentialBalanceHandle(address);
-  if (relayerDebug) console.debug("[relayer] confidentialBalanceOf handle", { address, token: payrollToken, handle });
-  if (isZeroHandle(handle)) return 0n;
-
-  if (!(await checkRelayerCdnHealth())) {
-    throw new Error("Relayer CDN unavailable. Decryption is temporarily disabled.");
-  }
-
-  const instance = await getRelayerInstance();
-  const keypair = instance.generateKeypair();
-  const startTimestamp = Math.floor(Date.now() / 1000);
-  const durationDays = 1;
-  const eip712 = instance.createEIP712(keypair.publicKey, [payrollToken], startTimestamp, durationDays);
-  if (relayerDebug) console.debug("[relayer] eip712 created", { address, startTimestamp, durationDays, primaryType: eip712.primaryType });
-
-  const signature = await signUserDecryptTypedData(address, eip712);
-  const normalizedSignature = signature.startsWith("0x") ? signature.slice(2) : signature;
-  if (relayerDebug) console.debug("[relayer] typed data signed", { address });
-
-  let decrypted: Record<Hex, bigint | boolean | Hex>;
-  try {
-    if (relayerDebug) console.debug("[relayer] userDecrypt submit", { address });
-    decrypted = await instance.userDecrypt(
-      [{ handle, contractAddress: payrollToken }],
-      keypair.privateKey,
-      keypair.publicKey,
-      normalizedSignature,
-      [payrollToken],
-      address,
-      startTimestamp,
-      durationDays
-    );
-    if (relayerDebug) console.debug("[relayer] userDecrypt success", { address });
-  } catch (error) {
-    const message = getRelayerErrorMessage(error);
-    if (relayerDebug) console.debug("[relayer] userDecrypt failed", { address, error: message });
-    throw new Error(`Balance decryption submission failed: ${message}`);
-  }
-
-  const value = readDecryptedValue(decrypted, handle);
-  if (typeof value === "bigint") return value;
-  if (value === undefined) throw new Error("Relayer returned no decrypted balance for this account.");
-  throw new Error("Relayer returned an unexpected decrypted balance type.");
-}
-
 export async function encryptPayrollAmounts(
   userAddress: Address,
   clearAmounts: Array<number | bigint>
@@ -293,8 +101,8 @@ export async function encryptPayrollAmounts(
   if (!appConfig.payrollToken) throw new Error("Missing VITE_PAYROLL_TOKEN_ADDRESS.");
   if (!appConfig.payrollExecutor) throw new Error("Missing VITE_PAYROLL_EXECUTOR_ADDRESS.");
   if (clearAmounts.length === 0) throw new Error("No amounts provided for encryption.");
-  if (!(await checkRelayerCdnHealth())) {
-    throw new Error("Relayer CDN unavailable. Encryption is temporarily disabled.");
+  if (!(await checkRelayerSdkHealth())) {
+    throw new Error("Relayer SDK unavailable. Encryption is temporarily disabled.");
   }
 
   const instance = await getRelayerInstance();

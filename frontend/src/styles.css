@@ -313,10 +313,30 @@ a {
   padding: 14px;
 }
 
-.portal-balance-card {
-  display: grid;
-  max-width: 560px;
-  gap: 14px;
+.portal-dashboard {
+  gap: 12px;
+}
+
+.portal-hero h1 {
+  font-size: clamp(32px, 4vw, 56px);
+}
+
+.portal-hero-actions {
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.portal-stats .stat {
+  min-height: 88px;
+}
+
+.wallet-dropdown-address {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 680;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 .card h3,
@@ -2224,6 +2244,193 @@ body {
 
 .wallet-warning {
   justify-content: center;
+}
+
+.wallet-dropdown {
+  isolation: isolate;
+}
+
+.wallet-dropdown-trigger {
+  min-width: 188px;
+  justify-content: space-between;
+  border-color: rgba(15, 118, 110, 0.18);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 24px rgba(19, 31, 48, 0.06);
+  padding-inline: 14px;
+}
+
+.wallet-dropdown-trigger.is-open,
+.wallet-dropdown-trigger:hover:not(:disabled) {
+  border-color: rgba(15, 118, 110, 0.34);
+  background: #ffffff;
+}
+
+.wallet-dropdown-trigger-main {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.wallet-dropdown-trigger-main span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wallet-dropdown-menu {
+  width: min(360px, calc(100vw - 24px));
+  overflow: hidden;
+  gap: 0;
+  padding: 0;
+  border-color: rgba(216, 225, 234, 0.96);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 26px 80px rgba(7, 23, 41, 0.22);
+  backdrop-filter: blur(18px);
+}
+
+.wallet-dropdown-header {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(90deg, rgba(15, 118, 110, 0.1), rgba(79, 70, 229, 0.08)), #ffffff;
+  padding: 14px;
+}
+
+.wallet-dropdown-avatar {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid rgba(15, 118, 110, 0.18);
+  border-radius: 8px;
+  background: rgba(15, 118, 110, 0.08);
+  color: var(--brand-strong);
+}
+
+.wallet-dropdown-copyline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+}
+
+.section-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 820;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.wallet-dropdown-header strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 830;
+  line-height: 1.15;
+}
+
+.wallet-dropdown-header p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.wallet-dropdown-copy,
+.wallet-dropdown-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.wallet-dropdown-copy {
+  min-height: 34px;
+  padding: 0 10px;
+  color: var(--brand-strong);
+  font-size: 12px;
+  font-weight: 790;
+}
+
+.wallet-dropdown-body {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.wallet-dropdown-action {
+  min-height: 40px;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.wallet-dropdown-copy:hover:not(:disabled),
+.wallet-dropdown-action:hover:not(:disabled) {
+  border-color: rgba(15, 118, 110, 0.26);
+  background: rgba(15, 118, 110, 0.06);
+  box-shadow: 0 8px 18px rgba(19, 31, 48, 0.07);
+}
+
+.wallet-dropdown-action:disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
+}
+
+.wallet-dropdown-action.is-danger {
+  color: var(--danger);
+}
+
+.wallet-dropdown-balance,
+.wallet-dropdown-network {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  border: 1px solid rgba(15, 118, 110, 0.2);
+  border-radius: 8px;
+  background: rgba(15, 118, 110, 0.07);
+  padding: 10px 12px;
+}
+
+.wallet-dropdown-network {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  background: var(--surface-soft);
+  border-color: var(--line);
+}
+
+.wallet-dropdown-balance span,
+.wallet-dropdown-network span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 820;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.wallet-dropdown-balance strong,
+.wallet-dropdown-network strong {
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 830;
+  line-height: 1.35;
+}
+
+.wallet-dropdown .nav-icon {
+  width: 16px;
+  height: 16px;
 }
 
 

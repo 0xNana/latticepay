@@ -149,6 +149,66 @@ export function formatTokenAmount(minor: bigint, ccy = "USDC", decimals = 6) {
   return formatMinor(minor, decimals, ccy);
 }
 
+export function findRecipientPayment(account: Address | null, payments: PayrollPaymentDraft[]) {
+  if (!account) return null;
+  const normalized = account.toLowerCase();
+  return payments.find((payment) => payment.recipient.toLowerCase() === normalized) || null;
+}
+
+export type WalletUserProfile = {
+  payment: PayrollPaymentDraft | null;
+  name: string | null;
+  role: string | null;
+  description: string;
+  headerLabel: string;
+  headerTitle: string;
+};
+
+export function getWalletUserProfile(account: Address | null): WalletUserProfile {
+  const run = getAuditPayrollRun();
+  const payment = findRecipientPayment(account, run.payments);
+  const addressLabel = account ? `${account.slice(0, 6)}...${account.slice(-4)}` : "";
+
+  if (payment) {
+    const company = run.companyName.trim();
+    const description = company
+      ? `${payment.role} · ${company}${run.cycleName ? ` · ${run.cycleName}` : ""}`
+      : `${payment.role} · ${run.cycleName || "confidential payroll"}`;
+
+    return {
+      payment,
+      name: payment.name,
+      role: payment.role,
+      description,
+      headerLabel: payment.role,
+      headerTitle: payment.name
+    };
+  }
+
+  if (run.payments.length > 0) {
+    const company = run.companyName.trim();
+    return {
+      payment: null,
+      name: null,
+      role: null,
+      description: company
+        ? `Payroll operator · ${company}`
+        : "Connected account for payroll execution and confidential balance decrypts.",
+      headerLabel: "Wallet",
+      headerTitle: addressLabel
+    };
+  }
+
+  return {
+    payment: null,
+    name: null,
+    role: null,
+    description: "Connected account for payroll execution and confidential balance decrypts.",
+    headerLabel: "Wallet",
+    headerTitle: addressLabel
+  };
+}
+
 export function updateExecutionState(patch: Partial<NonNullable<PayrollRunDraft["executionState"]>>) {
   const run = getActivePayrollRun();
   run.executionState = { ...(run.executionState || { status: "idle" }), ...patch };
