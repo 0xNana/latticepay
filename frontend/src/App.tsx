@@ -1,7 +1,6 @@
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { Shell } from "./components/Shell";
 import { LandingPage } from "./pages/LandingPage";
-import { DashboardPage } from "./pages/DashboardPage";
 import { PayrollDraftPage } from "./pages/PayrollDraftPage";
 import { ExecutionConfirmationPage } from "./pages/ExecutionConfirmationPage";
 import { PayrollProcessingPage } from "./pages/PayrollProcessingPage";
@@ -39,9 +38,9 @@ function WorkspaceShell() {
 export function App() {
   return (
     <Routes>
-      <Route path="/" element={<LandingPage />} />
       <Route element={<WorkspaceShell />}>
-        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/dashboard" element={<Navigate to="/" replace />} />
         <Route path="/payroll" element={<PayrollEntryRoute />} />
         <Route path="/payroll/new" element={<NewPayrollRoute />} />
         <Route path="/payroll/draft" element={<PayrollDraftPage />} />

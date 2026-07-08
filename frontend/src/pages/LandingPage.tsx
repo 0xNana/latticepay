@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
+import { getActivePayrollRun } from "../lib/payrollRunStore";
+
 const features = [
   {
     kicker: "Encrypted amounts",
@@ -41,42 +43,62 @@ const auditRows = [
 
 export function LandingPage() {
   const [revealed, setRevealed] = useState(false);
+  const activeRun = getActivePayrollRun();
+  const hasRun = activeRun.payments.length > 0;
 
   return (
-    <div className="marketing-page">
-      <header className="marketing-nav" aria-label="LatticePay">
-        <Link className="marketing-brand" to="/" aria-label="LatticePay home">
-          <span className="marketing-brand-mark" aria-hidden="true">LP</span>
-          <span>LatticePay</span>
-        </Link>
-        <nav className="marketing-nav-links" aria-label="Landing page sections">
-          <a href="#features">Features</a>
-          <a href="#workflow">Workflow</a>
-          <a href="#privacy-demo">Privacy</a>
-        </nav>
-        <Link className="marketing-nav-cta" to="/dashboard">Open app</Link>
-      </header>
+    <div className="marketing-page marketing-page-workspace">
+      <div className="marketing-main">
+        <section className="marketing-hero marketing-hero-workspace" aria-labelledby="marketing-hero-title">
+          <div className="marketing-hero-shell-grid">
+            <div className="marketing-hero-copy">
+              <span className="marketing-kicker">Sepolia workspace</span>
+              <h1 id="marketing-hero-title">Confidential payroll</h1>
+              <p>
+                Import payroll files, encrypt amounts client-side, and settle confidential recipient balances without exposing compensation onchain.
+              </p>
+              <div className="marketing-hero-actions">
+                <Link className="marketing-button marketing-button-primary" to="/payroll/new">Start payroll run</Link>
+                <Link className="marketing-button marketing-button-secondary" to="/portal">Open portal</Link>
+              </div>
+              <ul className="marketing-hero-points" aria-label="Workspace highlights">
+                <li>ISO 20022 pain.001 import with local validation</li>
+                <li>Encrypted settlement via confidential ERC-7984 transfers</li>
+                <li>Recipient-controlled balance reveal in the portal</li>
+              </ul>
+            </div>
 
-      <main>
-        <section className="marketing-hero" aria-labelledby="marketing-hero-title">
-          <div className="marketing-hero-background" aria-hidden="true" />
-          <div className="marketing-hero-copy">
-            <span className="marketing-kicker">Confidential payroll on FHEVM</span>
-            <h1 id="marketing-hero-title">LatticePay</h1>
-            <p>
-              Private payroll execution for teams that need bank-file workflows, onchain settlement, and employee-level confidentiality in one operational surface.
-            </p>
-            <div className="marketing-hero-actions">
-              <Link className="marketing-button marketing-button-primary" to="/payroll/new">Start a payroll run</Link>
-              <Link className="marketing-button marketing-button-secondary" to="/portal">View employee portal</Link>
-            </div>
-          </div>
-          <div className="marketing-product-shot" aria-label="LatticePay payroll dashboard preview">
-            <img src="/hero-payroll-preview.png" alt="LatticePay payroll dashboard showing encrypted payroll workflow" />
-            <div className="marketing-shot-overlay">
-              <span>Settlement privacy</span>
-              <strong>Encrypted totals live onchain</strong>
-            </div>
+            <aside className="marketing-hero-panel" aria-label="Payroll workspace status">
+              <div className="marketing-hero-panel-head">
+                <span>Run state</span>
+                <strong>{hasRun ? "Ready" : "Idle"}</strong>
+              </div>
+              <div className="marketing-hero-metrics" aria-label="Payroll summary">
+                <div>
+                  <span>Recipients</span>
+                  <strong>{hasRun ? activeRun.stats.employees : 0}</strong>
+                </div>
+                <div>
+                  <span>Total</span>
+                  <strong>{hasRun ? activeRun.stats.totalDisplay : "—"}</strong>
+                </div>
+                <div>
+                  <span>Privacy</span>
+                  <strong>FHE</strong>
+                </div>
+              </div>
+              <div className="marketing-hero-preview" aria-hidden="true">
+                <img src="/hero-payroll-preview.png" alt="" />
+              </div>
+              <div className="marketing-hero-panel-foot">
+                <span>Workflow</span>
+                <div className="marketing-hero-flow">
+                  <span>Import</span>
+                  <span>Encrypt</span>
+                  <span>Settle</span>
+                </div>
+              </div>
+            </aside>
           </div>
         </section>
 
@@ -157,11 +179,11 @@ export function LandingPage() {
             <p>Open the app, load a sample batch, and move through validation, encryption, settlement, and receipt export.</p>
           </div>
           <div className="marketing-cta-actions">
-            <Link className="marketing-button marketing-button-primary" to="/dashboard">Open dashboard</Link>
+            <Link className="marketing-button marketing-button-primary" to="/payroll">Open payroll</Link>
             <Link className="marketing-button marketing-button-secondary" to="/payroll/new">New payroll run</Link>
           </div>
         </section>
-      </main>
+      </div>
 
       <footer className="marketing-footer">
         <div>
@@ -172,7 +194,7 @@ export function LandingPage() {
           <p>Confidential payroll infrastructure for encrypted onchain settlement.</p>
         </div>
         <div className="marketing-footer-links">
-          <Link to="/dashboard">Dashboard</Link>
+          <Link to="/">Home</Link>
           <Link to="/payroll/new">Payroll</Link>
           <Link to="/runs">Audit</Link>
           <Link to="/portal">Portal</Link>

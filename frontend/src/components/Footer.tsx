@@ -27,7 +27,7 @@ export function Footer() {
               <li><Link to="/payroll">Run payroll</Link></li>
               <li><Link to="/portal">Employee portal</Link></li>
               <li><Link to="/runs">Audit trail</Link></li>
-              <li><Link to="/dashboard">Home</Link></li>
+              <li><Link to="/">Home</Link></li>
             </ul>
           </div>
 

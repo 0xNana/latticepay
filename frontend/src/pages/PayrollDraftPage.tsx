@@ -110,7 +110,7 @@ export function PayrollDraftPage() {
                 : "Validation failed."}
           </span>
           <div className="cta-actions">
-            <Link className="button ghost" to="/dashboard">Back home</Link>
+            <Link className="button ghost" to="/">Back home</Link>
             <Link
               className="button"
               to={!isEmpty && validation.ok ? "/payroll/confirm" : "#"}

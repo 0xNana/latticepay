@@ -17,10 +17,10 @@ type IconName = "home" | "payroll" | "audit" | "portal" | "menu" | "close" | "co
 
 const nav = [
   {
-    to: "/dashboard",
+    to: "/",
     label: "Home",
     icon: "home" as const,
-    match: (pathname: string) => pathname === "/" || pathname.startsWith("/dashboard")
+    match: (pathname: string) => pathname === "/"
   },
   {
     to: "/payroll",
@@ -484,7 +484,7 @@ function WalletDropdown({
 
 function BrandLink({ compact }: { compact: boolean }) {
   return (
-    <Link className={`brand-link ${compact ? "is-compact" : ""}`} to="/dashboard" aria-label="Lattice Pay home" title={compact ? "Lattice Pay" : undefined}>
+    <Link className={`brand-link ${compact ? "is-compact" : ""}`} to="/" aria-label="Lattice Pay home" title={compact ? "Lattice Pay" : undefined}>
       <span className="brand-mark" aria-hidden="true">LP</span>
       <span className="brand-copy">
         <span className="brand-name">Lattice Pay</span>
