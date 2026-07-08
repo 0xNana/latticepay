@@ -1,5 +1,6 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { Shell } from "./components/Shell";
+import { LandingPage } from "./pages/LandingPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { PayrollDraftPage } from "./pages/PayrollDraftPage";
 import { ExecutionConfirmationPage } from "./pages/ExecutionConfirmationPage";
@@ -27,11 +28,19 @@ function NewPayrollRoute() {
   return <Navigate to="/payroll/draft" replace />;
 }
 
-export function App() {
+function WorkspaceShell() {
   return (
     <Shell>
-      <Routes>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Outlet />
+    </Shell>
+  );
+}
+
+export function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<LandingPage />} />
+      <Route element={<WorkspaceShell />}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/payroll" element={<PayrollEntryRoute />} />
         <Route path="/payroll/new" element={<NewPayrollRoute />} />
@@ -43,7 +52,7 @@ export function App() {
         <Route path="/payout" element={<Navigate to="/portal" replace />} />
         <Route path="/runs" element={<HistoricalRunsPage />} />
         <Route path="/runs/audit" element={<AuditDetailPage />} />
-      </Routes>
-    </Shell>
+      </Route>
+    </Routes>
   );
 }
