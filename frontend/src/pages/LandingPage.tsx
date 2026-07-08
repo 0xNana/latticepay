@@ -3,26 +3,26 @@ import { Link } from "react-router-dom";
 
 import { getActivePayrollRun } from "../lib/payrollRunStore";
 
-const features = [
+const capabilities = [
   {
-    kicker: "Encrypted amounts",
-    title: "Payroll values stay private across the run.",
-    body: "Salary figures are encrypted before settlement, leaving public infrastructure with proofs and handles instead of readable compensation data."
+    mediaClass: "landing-card-media-private",
+    title: "Private payroll runs",
+    body: "Salary amounts stay encrypted from draft review through settlement."
   },
   {
-    kicker: "Bank file native",
-    title: "Start from the files payroll teams already use.",
-    body: "Import ISO 20022 pain.001 batches, validate recipients locally, and export pain.002-style receipts for downstream reconciliation."
+    mediaClass: "landing-card-media-files",
+    title: "Bank file native",
+    body: "Import pain.001 payroll files and keep receipt records for every run."
   },
   {
-    kicker: "Recipient portal",
-    title: "Employees reveal only their own balance.",
-    body: "Wallet-signed decryptions keep the portal self-serve while preventing global payroll disclosure."
+    mediaClass: "landing-card-media-recipient",
+    title: "Recipient-controlled reveal",
+    body: "Workers reveal only their own confidential balance from the portal."
   },
   {
-    kicker: "Audit trail",
-    title: "Operations can prove execution without exposing payroll.",
-    body: "Every batch keeps transaction hashes, receipt status, and run metadata attached to the same confidential workflow."
+    mediaClass: "landing-card-media-settle",
+    title: "Encrypted settlement",
+    body: "Confidential token transfers preserve privacy while producing an audit trail."
   }
 ];
 
@@ -47,18 +47,19 @@ export function LandingPage() {
   const hasRun = activeRun.payments.length > 0;
 
   return (
-    <div className="marketing-page marketing-page-workspace">
+    <div className="marketing-page">
       <div className="marketing-main">
         <section className="marketing-hero marketing-hero-workspace" aria-labelledby="marketing-hero-title">
           <div className="marketing-hero-shell-grid">
             <div className="marketing-hero-copy">
-              <span className="marketing-kicker">Sepolia workspace</span>
               <h1 id="marketing-hero-title">Confidential payroll</h1>
               <p>
                 Import payroll files, encrypt amounts client-side, and settle confidential recipient balances without exposing compensation onchain.
               </p>
               <div className="marketing-hero-actions">
-                <Link className="marketing-button marketing-button-primary" to="/payroll/new">Start payroll run</Link>
+                <Link className="marketing-button marketing-button-primary" to={hasRun ? "/payroll/draft" : "/payroll/new"}>
+                  {hasRun ? "Continue payroll run" : "Start payroll run"}
+                </Link>
                 <Link className="marketing-button marketing-button-secondary" to="/portal">Open portal</Link>
               </div>
               <ul className="marketing-hero-points" aria-label="Workspace highlights">
@@ -87,16 +88,14 @@ export function LandingPage() {
                   <strong>FHE</strong>
                 </div>
               </div>
-              <div className="marketing-hero-preview" aria-hidden="true">
-                <img src="/hero-payroll-preview.png" alt="" />
+              <div className="marketing-hero-flow-list" aria-label="Payroll workflow">
+                <div><span>Import</span><strong>pain.001</strong></div>
+                <div><span>Encrypt</span><strong>Amounts</strong></div>
+                <div><span>Settle</span><strong>Receipt</strong></div>
               </div>
               <div className="marketing-hero-panel-foot">
-                <span>Workflow</span>
-                <div className="marketing-hero-flow">
-                  <span>Import</span>
-                  <span>Encrypt</span>
-                  <span>Settle</span>
-                </div>
+                <span>Network</span>
+                <strong>Sepolia testnet</strong>
               </div>
             </aside>
           </div>
@@ -109,18 +108,23 @@ export function LandingPage() {
           <div><span>Output</span><strong>pain.002 receipts</strong></div>
         </section>
 
-        <section id="features" className="marketing-section marketing-features" aria-labelledby="features-title">
+        <nav className="marketing-section-nav" aria-label="On this page">
+          <a href="#capabilities">Capabilities</a>
+          <a href="#workflow">Workflow</a>
+          <a href="#privacy-demo">Privacy</a>
+        </nav>
+
+        <section id="capabilities" className="marketing-section marketing-capabilities" aria-labelledby="capabilities-title">
           <div className="marketing-section-head">
-            <span className="marketing-kicker">Features</span>
-            <h2 id="features-title">Built for payroll operators.</h2>
-            <p>Every surface is oriented around the controls finance teams need before, during, and after confidential settlement.</p>
+            <span className="marketing-kicker">Capabilities</span>
+            <h2 id="capabilities-title">Everything in one confidential payroll surface.</h2>
           </div>
-          <div className="marketing-feature-grid">
-            {features.map((feature) => (
-              <article className="marketing-feature-card" key={feature.title}>
-                <span>{feature.kicker}</span>
-                <h3>{feature.title}</h3>
-                <p>{feature.body}</p>
+          <div className="landing-product-grid">
+            {capabilities.map((item) => (
+              <article className="landing-product-card" key={item.title}>
+                <div className={`landing-card-media ${item.mediaClass}`} aria-hidden="true" />
+                <h3>{item.title}</h3>
+                <p>{item.body}</p>
               </article>
             ))}
           </div>
@@ -184,22 +188,6 @@ export function LandingPage() {
           </div>
         </section>
       </div>
-
-      <footer className="marketing-footer">
-        <div>
-          <Link className="marketing-brand" to="/" aria-label="LatticePay home">
-            <span className="marketing-brand-mark" aria-hidden="true">LP</span>
-            <span>LatticePay</span>
-          </Link>
-          <p>Confidential payroll infrastructure for encrypted onchain settlement.</p>
-        </div>
-        <div className="marketing-footer-links">
-          <Link to="/">Home</Link>
-          <Link to="/payroll/new">Payroll</Link>
-          <Link to="/runs">Audit</Link>
-          <Link to="/portal">Portal</Link>
-        </div>
-      </footer>
     </div>
   );
 }

@@ -7,9 +7,7 @@ export function Footer() {
         <div className="site-footer-grid">
           <div>
             <div className="site-footer-brand">
-              <div className="site-footer-mark" aria-hidden="true">
-                <span className="material-icons">shield_lock</span>
-              </div>
+              <div className="site-footer-mark" aria-hidden="true">LP</div>
               <div>
                 <p className="site-footer-name">Lattice Pay</p>
                 <p className="site-footer-tagline">Private payroll on Ethereum</p>
@@ -34,8 +32,8 @@ export function Footer() {
           <div>
             <h4 className="site-footer-heading">Trust</h4>
             <ul className="site-footer-links">
-              <li><a href="#how-it-works">How it works</a></li>
-              <li><a href="#privacy">Privacy model</a></li>
+              <li><Link to="/#workflow">How it works</Link></li>
+              <li><Link to="/#privacy-demo">Privacy model</Link></li>
               <li><Link to="/runs/audit">Receipt records</Link></li>
             </ul>
           </div>

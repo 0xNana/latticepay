@@ -12,6 +12,7 @@ import {
 import { hasFaucetConfig } from "../lib/config";
 import { usePayrollBalanceDecrypt } from "../lib/usePayrollBalanceDecrypt";
 import { getWalletUserProfile } from "../lib/payrollRunStore";
+import { Footer } from "./Footer";
 
 type IconName = "home" | "payroll" | "audit" | "portal" | "menu" | "close" | "collapse" | "expand" | "faucet" | "wallet" | "chevron" | "copy" | "check" | "eye" | "logout";
 
@@ -294,8 +295,8 @@ export function Shell({ children }: PropsWithChildren) {
       <div className="content-shell">
         <header className="workspace-bar">
           <div className="workspace-context">
-            <span>Workspace</span>
-            <strong>Confidential payroll</strong>
+            <span>{location.pathname === "/" ? "Home" : "Workspace"}</span>
+            <strong>{location.pathname === "/" ? "Confidential payroll overview" : "Confidential payroll"}</strong>
           </div>
           <div className="workspace-actions">
             <HeaderFaucet
@@ -322,6 +323,7 @@ export function Shell({ children }: PropsWithChildren) {
         </header>
 
         <main id="main-content" className="page">{children}</main>
+        <Footer />
       </div>
 
       {toast ? <div className={`toast toast-${toast.tone}`}>{toast.message}</div> : null}
